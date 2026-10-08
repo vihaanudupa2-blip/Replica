@@ -1,9 +1,4 @@
-# 📦 Replica Full Project Blueprint
 
-If you prefer uploading standard source files to GitHub rather than the single `index.html` file, create these files inside your project directory:
-
-## 1. `package.json`
-```json
 {
   "name": "replica-app",
   "private": true,
@@ -65,9 +60,3 @@ export default {
 }
 ```
 
-## ⚡ Direct 1-Click Upload Steps for GitHub & Vercel
-
-1. Go to [GitHub.com](https://github.com/new) and name your repository `replica-app`.
-2. Click **"uploading an existing file"** link on GitHub.
-3. Drag and drop the `index.html` file (or all project files) directly into GitHub and click **Commit changes**.
-4. Open [Vercel.com](https://vercel.com), connect your GitHub account, click **Import** on `replica-app`, and click **Deploy**.
