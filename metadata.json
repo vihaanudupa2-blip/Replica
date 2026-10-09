@@ -1,0 +1,7 @@
+{
+  "name": "Replica Cyberboard",
+  "description": "Replica 4chan Cyberboard with Olive AI Sentinel",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

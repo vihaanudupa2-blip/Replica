@@ -4,7 +4,9 @@
   "description": "Replica 4chan Cyberboard with Olive AI Sentinel",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "echo 'No build step required for static express app'"
   },
   "dependencies": {
     "cors": "^2.8.5",

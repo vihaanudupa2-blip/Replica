@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REPLICA // Private Cyberboard &amp; JARVIS AI Sentinel</title>
+  <meta name="description" content="Private Cyberboard with Master Admin Access Approval Gate, JARVIS AI Defense &amp; Real-Time Voice Calling">
+  <meta property="og:title" content="REPLICA // Private Cyberboard &amp; JARVIS AI Sentinel">
+  <meta property="og:description" content="Private Cyberboard with Master Admin Access Approval Gate, JARVIS AI Defense &amp; Real-Time Voice Calling">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- React & ReactDOM CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- Babel Standalone CDN -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Socket.IO Client -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- Google Fonts: JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background-color: #070a0e;
+      color: #92a3b5;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0b1016;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #10b981;
+    }
+    .greentext {
+      color: #7ee787;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.85; box-shadow: 0 0 12px rgba(16, 185, 129, 0.25); }
+      50% { opacity: 1; box-shadow: 0 0 24px rgba(16, 185, 129, 0.7); }
+    }
+    .jarvis-glow {
+      animation: pulse-glow 2.4s infinite;
+    }
+    @keyframes wave-active {
+      0%, 100% { height: 6px; }
+      50% { height: 24px; }
+    }
+    .voice-bar {
+      animation: wave-active 1.1s ease-in-out infinite;
+    }
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(1000%); }
+    }
+    .scanline-effect {
+      background: linear-gradient(to bottom, transparent, rgba(16, 185, 129, 0.08), transparent);
+      animation: scanline 8s linear infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-black">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const MASTER_ADMIN_EMAIL = 'vihaanudupa2@gmail.com';
+    const AVAILABLE_EMOJIS = ['👍', '❤️', '🔥', '🛡️', '⚡', '💀', '🚀', '😂', '🎉', '🧠'];
+
+    const SLASH_COMMANDS = [
+      { cmd: '/hack', desc: 'Simulated counter-attack against hostile hacker nodes', icon: '⚡' },
+      { cmd: '/defend', desc: 'Engage quantum defense shield & rotate keys', icon: '🛡️' },
+      { cmd: '/scan', desc: 'Comprehensive zero-day vulnerability scan', icon: '🔍' },
+      { cmd: '/status', desc: 'Real-time telemetry, memory buffers & active peers', icon: '📊' },
+      { cmd: '/clear', desc: 'Maintenance buffer purge', icon: '🧹' },
+      { cmd: '/help', desc: 'Display all JARVIS tactical protocols', icon: '📋' }
+    ];
+
+    // Simple Web Audio Sound Synthesizer for Cyber feedback
+    const playCyberAudio = (type) => {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        const now = ctx.currentTime;
+        if (type === 'send') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(580, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+          gain.gain.setValueAtTime(0.04, now);
+          gain.gain.linearRampToValueAtTime(0.001, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        } else if (type === 'react') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(740, now);
+          gain.gain.setValueAtTime(0.03, now);
+          gain.gain.linearRampToValueAtTime(0.001, now + 0.05);
+          osc.start(now);
+          osc.stop(now + 0.05);
+        } else if (type === 'alert') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.linearRampToValueAtTime(220, now + 0.2);
+          gain.gain.setValueAtTime(0.05, now);
+          gain.gain.linearRampToValueAtTime(0.001, now + 0.2);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } else if (type === 'grant') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.setValueAtTime(659.25, now + 0.08);
+          osc.frequency.setValueAtTime(783.99, now + 0.16);
+          gain.gain.setValueAtTime(0.05, now);
+          gain.gain.linearRampToValueAtTime(0.001, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        }
+      } catch (e) {}
+    };
+
+    // Vector Icons
+    const ShieldIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>);
+    const TerminalIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>);
+    const PhoneIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>);
+    const LockIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>);
+    const UploadIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>);
+    const SendIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>);
+    const CpuIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/></svg>);
+    const MicIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>);
+    const MicOffIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>);
+    const UserCheckIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>);
+    const CopyIcon = () => (<svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>);
+    const DownloadIcon = () => (<svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>);
+    const HashIcon = () => (<svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>);
+    const MessageCircleIcon = () => (<svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>);
+    const BanIcon = () => (<svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>);
+    const SmileIcon = () => (<svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>);
+
+    function ReplicaApp() {
+      // User Identity & Gatekeeper State
+      const [currentUser, setCurrentUser] = useState(() => {
+        const saved = localStorage.getItem('replica_user');
+        return saved ? JSON.parse(saved) : null;
+      });
+
+      // Form inputs for Gatekeeper (NO secret code!)
+      const [inputActualName, setInputActualName] = useState('');
+      const [inputUsername, setInputUsername] = useState('');
+      const [inputNote, setInputNote] = useState('');
+      const [gatekeeperStatus, setGatekeeperStatus] = useState('idle');
+      const [pendingRequestId, setPendingRequestId] = useState(null);
+      const [bannedReason, setBannedReason] = useState(null);
+
+      // Master Admin Password Input (Direct Password prompt, NO Gmail input!)
+      const [adminInputPassword, setAdminInputPassword] = useState('');
+      const [isAdminLoginModal, setIsAdminLoginModal] = useState(false);
+      const [adminAuthError, setAdminAuthError] = useState('');
+
+      // Channels & Direct Messages (DMs)
+      const [activeChatTarget, setActiveChatTarget] = useState({ type: 'channel', id: '#main-board' }); // { type: 'channel'|'dm', id: '#main-board'|'JARVIS'|'username' }
+      const [channels] = useState([
+        { id: '#main-board', name: 'main-board', desc: 'Universal Cyberboard' },
+        { id: '#hack-ops', name: 'hack-ops', desc: 'Tactical Drills & JARVIS' },
+        { id: '#lounge', name: 'lounge', desc: 'Friends Lounge' }
+      ]);
+
+      // Cyberboard Main Chat State
+      const [message, setMessage] = useState('');
+      const [replyingTo, setReplyingTo] = useState(null);
+      const [attachedFile, setAttachedFile] = useState(null);
+      const [isScanningFile, setIsScanningFile] = useState(false);
+      const [posts, setPosts] = useState([]);
+      const [activeUsersCount, setActiveUsersCount] = useState(1);
+      const [showSlashHints, setShowSlashHints] = useState(false);
+      const [hoveredPostId, setHoveredPostId] = useState(null);
+      const [activeEmojiPickerPostId, setActiveEmojiPickerPostId] = useState(null);
+
+      // Moderation / Banned Users & Approvals (Admin view)
+      const [accessRequests, setAccessRequests] = useState([]);
+      const [bannedUsersList, setBannedUsersList] = useState([]);
+      const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
+      const [adminModalTab, setAdminModalTab] = useState('approvals'); // 'approvals' | 'banned'
+      const [copiedLink, setCopiedLink] = useState(false);
+
+      // JARVIS & Security State
+      const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+      const [terminalInput, setTerminalInput] = useState('');
+      const [securityState, setSecurityState] = useState({
+        threatsNeutralized: 18,
+        firewallIntegrity: 100,
+        defenseMode: 'MAXIMUM',
+        systemAuditLogs: [
+          `[SYS] JARVIS AI Sentinel initialized.`,
+          `[GATE] Gatekeeper locked. Master Admin: ${MASTER_ADMIN_EMAIL}.`
+        ]
+      });
+
+      // Voice Call State with Microphone Activity Tracking
+      const [isVoiceActive, setIsVoiceActive] = useState(false);
+      const [isMicMuted, setIsMicMuted] = useState(false);
+      const [isSpeakingLocal, setIsSpeakingLocal] = useState(false);
+      const [voiceParticipants, setVoiceParticipants] = useState([]);
+      const [callDuration, setCallDuration] = useState(0);
+
+      // Lightbox preview for image payloads
+      const [lightboxImg, setLightboxImg] = useState(null);
+
+      // Refs
+      const socketRef = useRef(null);
+      const chatEndRef = useRef(null);
+      const terminalEndRef = useRef(null);
+      const fileInputRef = useRef(null);
+      const callTimerRef = useRef(null);
+      const messageInputRef = useRef(null);
+
+      // Save user session
+      useEffect(() => {
+        if (currentUser) {
+          localStorage.setItem('replica_user', JSON.stringify(currentUser));
+        } else {
+          localStorage.removeItem('replica_user');
+        }
+      }, [currentUser]);
+
+      // Connect to Socket.IO
+      useEffect(() => {
+        try {
+          if (typeof io !== 'undefined') {
+            const socket = io();
+            socketRef.current = socket;
+
+            socket.on('initHistory', (history) => {
+              if (Array.isArray(history)) setPosts(history);
+            });
+
+            socket.on('newPost', (post) => {
+              setPosts((prev) => {
+                if (prev.some((p) => p.id === post.id)) return prev;
+                return [...prev, post];
+              });
+              playCyberAudio('send');
+            });
+
+            socket.on('postReactionUpdate', ({ postId, reactions }) => {
+              setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, reactions } : p));
+              playCyberAudio('react');
+            });
+
+            socket.on('userCountUpdate', (count) => {
+              setActiveUsersCount(count);
+            });
+
+            socket.on('allAccessRequests', (requests) => {
+              if (Array.isArray(requests)) setAccessRequests(requests);
+            });
+
+            socket.on('bannedUsersList', (banned) => {
+              if (Array.isArray(banned)) setBannedUsersList(banned);
+            });
+
+            socket.on('newAccessRequestNotification', () => {
+              playCyberAudio('alert');
+            });
+
+            socket.on('adminPasswordResult', ({ success, adminUser, message }) => {
+              if (success && adminUser) {
+                setCurrentUser(adminUser);
+                setIsAdminLoginModal(false);
+                setAdminAuthError('');
+                playCyberAudio('grant');
+              } else {
+                setAdminAuthError(message || 'Incorrect master password');
+                playCyberAudio('alert');
+              }
+            });
+
+            socket.on('accessDecision', (decision) => {
+              if (decision.requestId === pendingRequestId || (currentUser && currentUser.username === decision.username)) {
+                if (decision.status === 'approved') {
+                  playCyberAudio('grant');
+                  setGatekeeperStatus('approved');
+                  const approvedUserObj = {
+                    actualName: decision.actualName,
+                    username: decision.username,
+                    isApproved: true,
+                    isAdmin: decision.username === 'Master Admin'
+                  };
+                  setCurrentUser(approvedUserObj);
+                } else if (decision.status === 'denied') {
+                  playCyberAudio('alert');
+                  setGatekeeperStatus('denied');
+                }
+              }
+            });
+
+            // Instant Ban Event Ejection
+            socket.on('userBannedEvent', ({ username, reason }) => {
+              if (currentUser && currentUser.username.toLowerCase() === username.toLowerCase()) {
+                setBannedReason(reason);
+                setCurrentUser(null);
+                setGatekeeperStatus('banned');
+                playCyberAudio('alert');
+              }
+            });
+
+            socket.on('accessDeniedBanned', ({ reason }) => {
+              setBannedReason(reason);
+              setGatekeeperStatus('banned');
+            });
+
+            socket.on('userRevoked', ({ username }) => {
+              if (currentUser && currentUser.username.toLowerCase() === username.toLowerCase()) {
+                alert('Your access has been revoked by the Master Admin.');
+                setCurrentUser(null);
+                setGatekeeperStatus('idle');
+              }
+            });
+
+            socket.on('voiceStateUpdate', (participants) => {
+              setVoiceParticipants(participants || []);
+            });
+
+            socket.on('securityState', (sec) => {
+              if (sec) setSecurityState(prev => ({ ...prev, ...sec }));
+            });
+
+            socket.on('securityAuditLog', (logEntry) => {
+              setSecurityState(prev => ({
+                ...prev,
+                systemAuditLogs: [...prev.systemAuditLogs.slice(-60), logEntry]
+              }));
+            });
+
+            return () => socket.disconnect();
+          }
+        } catch (err) {
+          console.warn('Socket connect failed:', err);
+        }
+      }, [pendingRequestId, currentUser]);
+
+      // Scroll chat to bottom
+      useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, [posts, activeChatTarget]);
+
+      // Scroll terminal logs
+      useEffect(() => {
+        if (isTerminalOpen) {
+          terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, [securityState.systemAuditLogs, isTerminalOpen]);
+
+      // Call timer
+      useEffect(() => {
+        if (isVoiceActive) {
+          callTimerRef.current = setInterval(() => {
+            setCallDuration(d => d + 1);
+          }, 1000);
+        } else {
+          clearInterval(callTimerRef.current);
+          setCallDuration(0);
+        }
+        return () => clearInterval(callTimerRef.current);
+      }, [isVoiceActive]);
+
+      // Tripcode Generator
+      const getTripcode = (name) => {
+        if (!name) return '!rEp3x99a';
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+          hash = (hash << 5) - hash + name.charCodeAt(i);
+          hash |= 0;
+        }
+        return '!' + Math.abs(hash).toString(36).substring(0, 8);
+      };
+
+      // Submit Access Request (NO secret code!)
+      const handleRequestAccessSubmit = (e) => {
+        e.preventDefault();
+        if (!inputActualName.trim() || !inputUsername.trim()) return;
+
+        setGatekeeperStatus('submitting');
+
+        const payload = {
+          actualName: inputActualName.trim(),
+          username: inputUsername.trim(),
+          note: inputNote.trim()
+        };
+
+        if (socketRef.current) {
+          socketRef.current.emit('submitAccessRequest', payload);
+          setGatekeeperStatus('pending');
+        } else {
+          fetch('/api/request-access', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          })
+          .then(res => res.json())
+          .then(data => {
+            setPendingRequestId(data.requestId);
+            setGatekeeperStatus('pending');
+          })
+          .catch(() => setGatekeeperStatus('idle'));
+        }
+      };
+
+      // Master Admin Password Verification (Checks password directly, DOES NOT ask for Gmail!)
+      const handleAdminPasswordSubmit = (e) => {
+        e.preventDefault();
+        setAdminAuthError('');
+        if (!adminInputPassword.trim()) {
+          setAdminAuthError('Please enter the password.');
+          return;
+        }
+
+        if (socketRef.current) {
+          socketRef.current.emit('verifyAdminPassword', { password: adminInputPassword.trim() });
+        } else {
+          // Direct fallback
+          if (adminInputPassword.length >= 4) {
+            const adminUser = {
+              actualName: 'Administrator',
+              username: 'Master Admin',
+              email: MASTER_ADMIN_EMAIL,
+              isApproved: true,
+              isAdmin: true
+            };
+            setCurrentUser(adminUser);
+            setIsAdminLoginModal(false);
+          } else {
+            setAdminAuthError('Invalid password. Minimum 4 characters.');
+          }
+        }
+      };
+
+      // Admin Ban User
+      const handleBanUser = (targetUsername) => {
+        if (!currentUser?.isAdmin || !targetUsername) return;
+        const reason = prompt(`Enter reason to permanently BAN @${targetUsername}:`, 'Violation of server protocols') || 'Banned by Master Admin';
+        if (socketRef.current) {
+          socketRef.current.emit('banUser', { username: targetUsername, reason });
+          playCyberAudio('alert');
+        }
+      };
+
+      // Admin Unban User
+      const handleUnbanUser = (targetUsername) => {
+        if (!currentUser?.isAdmin || !targetUsername) return;
+        if (socketRef.current) {
+          socketRef.current.emit('unbanUser', { username: targetUsername });
+          playCyberAudio('grant');
+        }
+      };
+
+      // Admin Resolves Access Request (Approve / Deny)
+      const handleResolveRequest = (requestId, action) => {
+        if (!currentUser?.isAdmin) return;
+        if (socketRef.current) {
+          socketRef.current.emit('resolveAccessRequest', {
+            requestId,
+            action,
+            adminKey: MASTER_ADMIN_EMAIL
+          });
+          playCyberAudio(action === 'approve' ? 'grant' : 'alert');
+        }
+      };
+
+      // Toggle Emoji Reaction on a post (Real-Time via Socket Event)
+      const handleToggleReaction = (postId, emoji) => {
+        if (!currentUser) return;
+        if (socketRef.current) {
+          socketRef.current.emit('toggleReaction', {
+            postId,
+            emoji,
+            username: currentUser.username
+          });
+        }
+        setActiveEmojiPickerPostId(null);
+      };
+
+      // Copy Website Link for friends
+      const handleCopyInviteLink = () => {
+        const fullLink = `${window.location.origin}${window.location.pathname}`;
+        navigator.clipboard.writeText(fullLink);
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2500);
+      };
+
+      // File Attachment Handler with JARVIS Simulated Anti-Malware Scan
+      const handleFileSelect = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsScanningFile(true);
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setTimeout(() => {
+            setIsScanningFile(false);
+            setAttachedFile({
+              name: file.name,
+              size: (file.size / 1024).toFixed(1) + ' KB',
+              type: file.type || 'application/octet-stream',
+              dataUrl: ev.target.result,
+              isImage: file.type.startsWith('image/'),
+              isAudio: file.type.startsWith('audio/')
+            });
+            playCyberAudio('grant');
+          }, 1000);
+        };
+        reader.readAsDataURL(file);
+      };
+
+      // Send Chat Post (Supports Channels and DMs)
+      const handlePostSubmit = (e) => {
+        if (e) e.preventDefault();
+        if (!message.trim() && !attachedFile) return;
+
+        const currentMsg = message.trim();
+        const author = currentUser?.username || 'Anonymous';
+        const actualName = currentUser?.actualName || 'Friend';
+        const trip = getTripcode(author);
+
+        const isDm = activeChatTarget.type === 'dm';
+        const channelId = isDm ? null : activeChatTarget.id;
+        const recipient = isDm ? activeChatTarget.id : null;
+
+        const postData = {
+          channelId,
+          recipient,
+          author,
+          actualName,
+          trip,
+          content: currentMsg,
+          file: attachedFile,
+          replyTo: replyingTo
+        };
+
+        if (socketRef.current && socketRef.current.connected) {
+          socketRef.current.emit('sendPost', postData);
+        } else {
+          const localPost = {
+            id: Math.floor(100000 + Math.random() * 900000),
+            channelId,
+            recipient,
+            author,
+            actualName,
+            trip,
+            timestamp: new Date().toLocaleTimeString(),
+            content: currentMsg,
+            file: attachedFile,
+            isSystem: false,
+            replyTo: replyingTo,
+            reactions: {}
+          };
+          setPosts(prev => [...prev, localPost]);
+          playCyberAudio('send');
+        }
+
+        setMessage('');
+        setAttachedFile(null);
+        setReplyingTo(null);
+        setShowSlashHints(false);
+      };
+
+      // Voice Call Join / Leave
+      const handleToggleVoice = () => {
+        if (!currentUser) return;
+        if (!isVoiceActive) {
+          setIsVoiceActive(true);
+          setIsMicMuted(false);
+          setIsSpeakingLocal(true);
+          playCyberAudio('grant');
+          if (socketRef.current) {
+            socketRef.current.emit('joinVoiceCall', {
+              username: currentUser.username,
+              actualName: currentUser.actualName,
+              isMuted: false
+            });
+          }
+        } else {
+          setIsVoiceActive(false);
+          setIsSpeakingLocal(false);
+          playCyberAudio('alert');
+          if (socketRef.current) {
+            socketRef.current.emit('leaveVoiceCall');
+          }
+        }
+      };
+
+      // Voice Call Mic Mute Toggle (Real-time colored status dot updates immediately!)
+      const handleToggleMicMute = () => {
+        const nextMuted = !isMicMuted;
+        setIsMicMuted(nextMuted);
+        setIsSpeakingLocal(!nextMuted);
+        if (socketRef.current) {
+          socketRef.current.emit('updateVoiceState', {
+            isMuted: nextMuted,
+            speaking: !nextMuted
+          });
+        }
+      };
+
+      // Simulated voice activity toggle (for testing active speaking vs idle mic on)
+      const handleToggleSpeaking = () => {
+        if (isMicMuted) return;
+        const nextSpeaking = !isSpeakingLocal;
+        setIsSpeakingLocal(nextSpeaking);
+        if (socketRef.current) {
+          socketRef.current.emit('updateVoiceState', {
+            isMuted: false,
+            speaking: nextSpeaking
+          });
+        }
+      };
+
+      // Tactical Terminal Execution
+      const handleTerminalSubmit = (e) => {
+        e.preventDefault();
+        const cmd = terminalInput.trim();
+        if (!cmd) return;
+
+        setTerminalInput('');
+        if (socketRef.current) {
+          socketRef.current.emit('sendPost', {
+            channelId: '#hack-ops',
+            author: currentUser?.username || 'HACKER_TERMINAL',
+            actualName: currentUser?.actualName || 'Console',
+            trip: '[TERMINAL_RAW]',
+            content: cmd,
+            file: null
+          });
+        }
+      };
+
+      // Format greentext lines
+      const formatGreentext = (text) => {
+        if (!text) return null;
+        return text.split('\n').map((line, idx) => {
+          if (line.startsWith('>')) {
+            return <div key={idx} className="greentext font-mono">{line}</div>;
+          }
+          return <div key={idx}>{line}</div>;
+        });
+      };
+
+      // Format Call duration
+      const formatTime = (seconds) => {
+        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const s = (seconds % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+      };
+
+      // Filter posts based on active channel or DM
+      const filteredPosts = posts.filter((post) => {
+        if (activeChatTarget.type === 'channel') {
+          // Show posts for this channel (or legacy posts without channelId if in #main-board)
+          return post.channelId === activeChatTarget.id || (!post.channelId && !post.recipient && activeChatTarget.id === '#main-board');
+        } else {
+          // In a DM: show posts between currentUser and the target recipient (e.g. JARVIS or friend)
+          const dmTarget = activeChatTarget.id;
+          const isBetween = (post.recipient === dmTarget && post.author === currentUser?.username) ||
+                            (post.recipient === currentUser?.username && post.author === dmTarget) ||
+                            (dmTarget === 'JARVIS' && (post.author === 'JARVIS AI' && post.recipient === currentUser?.username));
+          return isBetween;
+        }
+      });
+
+      // Extract unique active friends list for DM sidebar
+      const knownFriends = Array.from(new Set(
+        posts
+          .map(p => p.author)
+          .filter(a => a && a !== 'JARVIS AI' && a !== currentUser?.username)
+      ));
+
+      const pendingCount = accessRequests.filter(r => r.status === 'pending').length;
+
+      // ==========================================
+      // VIEW 1: GATEKEEPER PORTAL (NOT APPROVED)
+      // ==========================================
+      if (!currentUser || !currentUser.isApproved) {
+        return (
+          <div className="min-h-screen bg-[#070a0e] flex flex-col items-center justify-center p-3 relative overflow-hidden">
+            <div className="absolute inset-0 scanline-effect pointer-events-none"></div>
+
+            <div className="max-w-lg w-full bg-gray-950/95 border border-emerald-900/60 rounded-xl p-5 sm:p-7 shadow-2xl shadow-emerald-950/40 relative z-10 backdrop-blur">
+              
+              {/* Header Branding */}
+              <div className="flex items-center gap-3.5 mb-5 border-b border-gray-800/90 pb-4">
+                <div className="w-12 h-12 rounded-lg bg-emerald-950 border border-emerald-500/50 flex items-center justify-center text-emerald-400 jarvis-glow">
+                  <CpuIcon />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-bold tracking-widest text-emerald-400 uppercase">REPLICA</h1>
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-700 font-mono">
+                      GATEKEEPER
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">
+                    Master Admin Destination: <span className="text-emerald-400 font-semibold">{MASTER_ADMIN_EMAIL}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Views */}
+              {gatekeeperStatus === 'banned' ? (
+                <div className="text-center py-6 space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-rose-950/70 border border-rose-500 flex items-center justify-center text-rose-400">
+                    <BanIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-rose-400 tracking-wide uppercase">
+                      ACCESS PROHIBITED &bull; PERMANENT BAN
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
+                      Your call-sign has been banned by Master Admin.
+                    </p>
+                    {bannedReason && (
+                      <div className="mt-2 text-xs font-mono text-rose-300 bg-rose-950/40 p-2 rounded border border-rose-900/50">
+                        Reason: {bannedReason}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : gatekeeperStatus === 'pending' ? (
+                <div className="text-center py-6 space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-emerald-950/70 border border-emerald-500 flex items-center justify-center text-emerald-400 jarvis-glow">
+                    <LockIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-emerald-300 tracking-wide">
+                      CLEARANCE REQUEST DISPATCHED
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
+                      Dispatched to <span className="text-emerald-400 font-bold">{MASTER_ADMIN_EMAIL}</span>. 
+                      The administrator must accept or deny your request before you can enter the private board.
+                    </p>
+                  </div>
+
+                  <div className="p-3 bg-gray-900/80 border border-gray-800 rounded font-mono text-xs text-left space-y-1">
+                    <div><span className="text-gray-500">Applicant Name:</span> <span className="text-emerald-400">{inputActualName}</span></div>
+                    <div><span className="text-gray-500">Call-sign / User:</span> <span className="text-emerald-300">@{inputUsername}</span></div>
+                    <div><span className="text-gray-500">Gatekeeper Status:</span> <span className="text-amber-400 animate-pulse">Awaiting Administrator Decision...</span></div>
+                  </div>
+
+                  <div className="text-[11px] text-gray-500 flex items-center justify-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                    <span>Live WebSocket synced. This screen automatically unlocks the moment you are approved.</span>
+                  </div>
+
+                  <button
+                    onClick={() => setGatekeeperStatus('idle')}
+                    className="text-xs text-gray-400 hover:text-emerald-400 underline pt-2"
+                  >
+                    Edit details or try again
+                  </button>
+                </div>
+              ) : gatekeeperStatus === 'denied' ? (
+                <div className="text-center py-6 space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-red-950/70 border border-red-500 flex items-center justify-center text-red-400">
+                    <LockIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-red-400 tracking-wide">
+                      ACCESS DENIED BY MASTER ADMIN
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {MASTER_ADMIN_EMAIL} declined your access request.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setGatekeeperStatus('idle')}
+                    className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded text-xs"
+                  >
+                    Return to Request Form
+                  </button>
+                </div>
+              ) : (
+                /* Request Access Form (NO secret code!) */
+                <form onSubmit={handleRequestAccessSubmit} className="space-y-4">
+                  <div className="p-2.5 bg-emerald-950/30 border border-emerald-900/60 rounded text-xs text-emerald-300 flex items-center gap-2">
+                    <ShieldIcon />
+                    <span>Private invite-only server. Please provide your real name and username for approval.</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">
+                      Your Actual Name <span className="text-emerald-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={inputActualName}
+                      onChange={(e) => setInputActualName(e.target.value)}
+                      placeholder="e.g. Alex"
+                      className="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">
+                      Desired Username / Call-Sign <span className="text-emerald-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={inputUsername}
+                      onChange={(e) => setInputUsername(e.target.value)}
+                      placeholder="e.g. GhostRider"
+                      className="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">
+                      Personal Note (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={inputNote}
+                      onChange={(e) => setInputNote(e.target.value)}
+                      placeholder="e.g. Hey, it's Alex from school!"
+                      className="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-black font-bold rounded text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20"
+                  >
+                    <UserCheckIcon />
+                    Request Access
+                  </button>
+
+                  <div className="pt-2 border-t border-gray-800/80 flex items-center justify-between text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setIsAdminLoginModal(true)}
+                      className="text-gray-400 hover:text-emerald-400 flex items-center gap-1.5 transition"
+                    >
+                      <LockIcon />
+                      Master Admin Login (Password Required)
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            {/* Master Admin Direct Login Modal (ASKS FOR PASSWORD ONLY, NOT GMAIL!) */}
+            {isAdminLoginModal && (
+              <div className="fixed inset-0 bg-black/85 backdrop-blur z-50 flex items-center justify-center p-3">
+                <div className="bg-gray-950 border border-emerald-500/70 rounded-xl max-w-sm w-full p-5 shadow-2xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-emerald-400 text-sm flex items-center gap-2">
+                      <LockIcon /> MASTER ADMIN AUTHENTICATION
+                    </h3>
+                    <button onClick={() => { setIsAdminLoginModal(false); setAdminAuthError(''); }} className="text-gray-400 hover:text-red-400 font-mono">✕</button>
+                  </div>
+
+                  <form onSubmit={handleAdminPasswordSubmit} className="space-y-3.5">
+                    <p className="text-xs text-gray-400">
+                      Enter your master administrator password to unlock console controls:
+                    </p>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">
+                        Master Admin Password
+                      </label>
+                      <input
+                        type="password"
+                        autoFocus
+                        required
+                        value={adminInputPassword}
+                        onChange={(e) => setAdminInputPassword(e.target.value)}
+                        placeholder="Enter password..."
+                        className="w-full bg-gray-900 border border-gray-800 rounded p-2.5 text-xs text-gray-100 font-mono focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    {adminAuthError && (
+                      <div className="text-rose-400 text-xs font-mono bg-rose-950/40 p-2 rounded border border-rose-900/40">
+                        {adminAuthError}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-black font-bold rounded text-xs uppercase"
+                    >
+                      Authenticate as Master Admin
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // ==========================================
+      // VIEW 2: AUTHENTICATED CYBERBOARD
+      // ==========================================
+      return (
+        <div className="flex-1 flex flex-col max-w-7xl w-full mx-auto p-2 sm:p-4 min-h-screen">
+          
+          {/* TOP HEADER BAR */}
+          <header className="bg-gray-900/90 border border-emerald-900/50 rounded-lg p-3 mb-3 flex flex-wrap items-center justify-between gap-3 shadow-lg shadow-emerald-950/20 backdrop-blur">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded bg-emerald-950 border border-emerald-500/40 flex items-center justify-center text-emerald-400 jarvis-glow">
+                <CpuIcon />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold tracking-wider text-emerald-400 uppercase">REPLICA</h1>
+                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                    JARVIS-PROTECTED
+                  </span>
+                  {currentUser.isAdmin && (
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-600 font-bold">
+                      MASTER ADMIN
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 flex items-center gap-1.5 mt-0.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>User: <strong className="text-emerald-300">{currentUser.username}</strong> ({currentUser.actualName})</span>
+                  <span className="text-gray-500">&bull; {activeUsersCount} online</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Action Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCopyInviteLink}
+                className="px-2.5 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 bg-gray-800 text-gray-300 border border-gray-700 hover:border-emerald-500 hover:text-emerald-400 transition"
+                title="Share website link"
+              >
+                <CopyIcon />
+                <span>{copiedLink ? 'Link Copied!' : 'Share Link'}</span>
+              </button>
+
+              {/* Moderation / Approvals (For Master Admin) */}
+              {currentUser.isAdmin && (
+                <button
+                  onClick={() => setIsRequestsModalOpen(true)}
+                  className={`px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1.5 border transition ${
+                    pendingCount > 0
+                      ? 'bg-amber-500 text-black border-amber-400 animate-pulse'
+                      : 'bg-gray-800 text-amber-400 border-amber-900/60 hover:border-amber-500'
+                  }`}
+                >
+                  <UserCheckIcon />
+                  <span>Admin Panel ({pendingCount})</span>
+                </button>
+              )}
+
+              {/* Voice Call Button */}
+              <button
+                onClick={handleToggleVoice}
+                className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 border transition ${
+                  isVoiceActive 
+                    ? 'bg-emerald-500 text-black border-emerald-400 shadow-md shadow-emerald-500/20' 
+                    : 'bg-gray-800 text-emerald-400 border-emerald-900 hover:border-emerald-500'
+                }`}
+              >
+                <PhoneIcon />
+                <span>{isVoiceActive ? 'In Voice' : 'Join Voice'}</span>
+              </button>
+
+              {/* JARVIS Terminal Button */}
+              <button
+                onClick={() => setIsTerminalOpen(!isTerminalOpen)}
+                className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 border transition ${
+                  isTerminalOpen
+                    ? 'bg-gray-700 text-emerald-400 border-emerald-500'
+                    : 'bg-gray-800 text-gray-300 border-gray-700 hover:border-emerald-500 hover:text-emerald-400'
+                }`}
+              >
+                <TerminalIcon />
+                <span>JARVIS Console</span>
+              </button>
+            </div>
+          </header>
+
+          {/* VOICE CALL BAR WITH COLORED STATUS DOTS */}
+          {(isVoiceActive || voiceParticipants.length > 0) && (
+            <div className="bg-emerald-950/40 border border-emerald-700/60 rounded-lg p-2.5 mb-3 text-xs backdrop-blur animate-fadeIn space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-full bg-emerald-900/80 border border-emerald-500 flex items-center justify-center text-emerald-400">
+                    <PhoneIcon />
+                  </div>
+                  <div>
+                    <div className="font-bold text-emerald-300 flex items-center gap-2 text-xs">
+                      ENCRYPTED VOICE ROOM
+                      <span className="text-[10px] bg-emerald-900 text-emerald-300 px-1.5 rounded border border-emerald-700">AES-256</span>
+                      {isVoiceActive && <span className="font-mono text-gray-400">[{formatTime(callDuration)}]</span>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {isVoiceActive ? (
+                    <>
+                      <button
+                        onClick={handleToggleMicMute}
+                        className={`px-2 py-1 rounded border text-xs flex items-center gap-1 font-semibold transition ${
+                          isMicMuted
+                            ? 'bg-rose-950/80 border-rose-700 text-rose-300 hover:bg-rose-900'
+                            : 'bg-emerald-900/60 border-emerald-700 text-emerald-300 hover:bg-emerald-800'
+                        }`}
+                      >
+                        {isMicMuted ? <MicOffIcon /> : <MicIcon />}
+                        <span>{isMicMuted ? 'Muted' : 'Mic On'}</span>
+                      </button>
+
+                      {!isMicMuted && (
+                        <button
+                          onClick={handleToggleSpeaking}
+                          className={`px-2 py-1 rounded border text-[11px] font-mono transition ${
+                            isSpeakingLocal 
+                              ? 'bg-emerald-500 text-black border-emerald-400 font-bold' 
+                              : 'bg-gray-800 text-gray-300 border-gray-700 hover:text-emerald-400'
+                          }`}
+                        >
+                          {isSpeakingLocal ? '🔊 Speaking' : '🔈 Idle'}
+                        </button>
+                      )}
+
+                      <button
+                        onClick={handleToggleVoice}
+                        className="px-2.5 py-1 bg-red-950 border border-red-700 hover:bg-red-900 text-red-300 rounded text-xs font-semibold"
+                      >
+                        Leave
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={handleToggleVoice}
+                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-black rounded text-xs font-bold"
+                    >
+                      Join Voice
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Participants list with colored dots */}
+              <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-emerald-900/40">
+                <span className="text-[11px] text-gray-400 font-mono">Peers:</span>
+                {voiceParticipants.map((p, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded border text-[11px] font-mono ${
+                      p.isMuted
+                        ? 'bg-gray-950 border-gray-800 text-gray-300'
+                        : p.speaking
+                        ? 'bg-emerald-950/80 border-emerald-500 text-emerald-200'
+                        : 'bg-gray-900 border-emerald-900/60 text-gray-200'
+                    }`}
+                  >
+                    {/* COLORED STATUS DOT */}
+                    {p.isMuted ? (
+                      <span className="h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.9)]"></span>
+                    ) : p.speaking ? (
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,1)]"></span>
+                      </span>
+                    ) : (
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
+                    )}
+
+                    <span>{p.actualName}</span>
+                    <span className="text-[10px] text-gray-400">(@{p.username})</span>
+                    <span className={`text-[9px] px-1 rounded uppercase ${p.isMuted ? 'text-rose-400 bg-rose-950/50' : 'text-emerald-400 bg-emerald-950/50'}`}>
+                      {p.isMuted ? 'Muted' : p.speaking ? 'Live' : 'Active'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* MAIN WORKSPACE: SIDEBAR (CHANNELS & DMS) + CHAT AREA */}
+          <div className="flex-1 flex flex-col md:flex-row gap-3 min-h-[500px]">
+            
+            {/* SERVER CHANNELS & DMS SIDEBAR */}
+            <aside className="w-full md:w-64 bg-gray-900/80 border border-gray-800 rounded-lg p-3 flex flex-col justify-between shrink-0 space-y-4">
+              <div className="space-y-4">
+                
+                {/* SERVER CHANNELS */}
+                <div>
+                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <span>GROUP CHANNELS</span>
+                    <span className="text-[10px] text-emerald-500 font-mono">SERVER</span>
+                  </div>
+                  <div className="space-y-1">
+                    {channels.map((ch) => {
+                      const isActive = activeChatTarget.type === 'channel' && activeChatTarget.id === ch.id;
+                      return (
+                        <button
+                          key={ch.id}
+                          onClick={() => setActiveChatTarget({ type: 'channel', id: ch.id })}
+                          className={`w-full text-left px-2.5 py-1.5 rounded flex items-center justify-between text-xs transition ${
+                            isActive
+                              ? 'bg-emerald-950/60 border border-emerald-800 text-emerald-300 font-bold'
+                              : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/70 border border-transparent'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <HashIcon />
+                            <span>{ch.name}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* DIRECT MESSAGES (DMs) */}
+                <div>
+                  <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <span>DIRECT MESSAGES (DMs)</span>
+                    <span className="text-[10px] text-gray-500 font-mono">PRIVATE</span>
+                  </div>
+                  <div className="space-y-1">
+                    
+                    {/* JARVIS AI DM */}
+                    <button
+                      onClick={() => setActiveChatTarget({ type: 'dm', id: 'JARVIS' })}
+                      className={`w-full text-left px-2.5 py-1.5 rounded flex items-center gap-2 text-xs transition ${
+                        activeChatTarget.type === 'dm' && activeChatTarget.id === 'JARVIS'
+                          ? 'bg-emerald-950/70 border border-emerald-600 text-emerald-300 font-bold shadow-sm shadow-emerald-950'
+                          : 'text-emerald-400 hover:bg-gray-800/70 border border-transparent'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span className="font-semibold">🤖 JARVIS AI</span>
+                      <span className="text-[10px] bg-emerald-900/80 text-emerald-300 px-1 rounded ml-auto">COPILOT</span>
+                    </button>
+
+                    {/* Friends DMs */}
+                    {knownFriends.map((fName) => {
+                      const isActive = activeChatTarget.type === 'dm' && activeChatTarget.id === fName;
+                      return (
+                        <div
+                          key={fName}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded text-xs transition ${
+                            isActive
+                              ? 'bg-gray-800 border border-gray-700 text-gray-100 font-bold'
+                              : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                          }`}
+                        >
+                          <button
+                            onClick={() => setActiveChatTarget({ type: 'dm', id: fName })}
+                            className="flex items-center gap-2 flex-1 text-left truncate"
+                          >
+                            <MessageCircleIcon />
+                            <span className="truncate">@{fName}</span>
+                          </button>
+
+                          {/* Ban Action (Master Admin only) */}
+                          {currentUser.isAdmin && (
+                            <button
+                              onClick={() => handleBanUser(fName)}
+                              title={`Ban @${fName} from the server`}
+                              className="text-gray-500 hover:text-rose-400 p-0.5"
+                            >
+                              <BanIcon />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* JARVIS DEFENSE MINI CARD */}
+              <div className="p-2.5 bg-black/40 border border-emerald-950 rounded text-[11px] font-mono space-y-1">
+                <div className="flex items-center justify-between text-emerald-400 font-semibold">
+                  <span>JARVIS SENTINEL</span>
+                  <span>100% OK</span>
+                </div>
+                <div className="text-gray-500 flex justify-between">
+                  <span>Blocked Threats:</span>
+                  <span className="text-emerald-400 font-bold">{securityState.threatsNeutralized}</span>
+                </div>
+                <div className="text-gray-500 flex justify-between">
+                  <span>Firewall Mode:</span>
+                  <span className="text-emerald-400">{securityState.defenseMode}</span>
+                </div>
+              </div>
+            </aside>
+
+            {/* CHAT DISPLAY & MESSAGE FEED */}
+            <main className="flex-1 flex flex-col bg-gray-950/90 border border-gray-800 rounded-lg overflow-hidden">
+              
+              {/* CURRENT CHAT HEADER */}
+              <div className="bg-gray-900/90 border-b border-gray-800 px-4 py-2.5 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 font-bold text-gray-200">
+                  {activeChatTarget.type === 'channel' ? <HashIcon /> : <MessageCircleIcon />}
+                  <span className="text-emerald-400">
+                    {activeChatTarget.type === 'channel' ? activeChatTarget.id : `@${activeChatTarget.id}`}
+                  </span>
+                  <span className="text-gray-500 text-[11px] font-normal">
+                    {activeChatTarget.type === 'channel' 
+                      ? (channels.find(c => c.id === activeChatTarget.id)?.desc || 'Channel')
+                      : 'Private Direct Message with E2E Encryption'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-gray-500 font-mono">
+                    Type <code className="text-emerald-400 bg-gray-800 px-1 py-0.5 rounded">/</code> for commands
+                  </span>
+                </div>
+              </div>
+
+              {/* CHAT MESSAGES SCROLL AREA */}
+              <div className="flex-1 p-3 sm:p-4 overflow-y-auto space-y-4 custom-scrollbar min-h-[380px] max-h-[520px]">
+                {filteredPosts.length === 0 ? (
+                  <div className="text-center py-16 text-gray-600 font-mono text-xs">
+                    No messages in {activeChatTarget.id} yet. Start the conversation or type /hack or /help!
+                  </div>
+                ) : (
+                  filteredPosts.map((post) => (
+                    <div
+                      key={post.id}
+                      onMouseEnter={() => setHoveredPostId(post.id)}
+                      onMouseLeave={() => setHoveredPostId(null)}
+                      className={`relative group p-3 rounded border transition ${
+                        post.isSystem
+                          ? 'bg-emerald-950/20 border-emerald-800/60 text-emerald-300'
+                          : 'bg-gray-900/50 border-gray-800/80 hover:border-gray-700'
+                      }`}
+                    >
+                      {/* POST HEADER */}
+                      <div className="flex flex-wrap items-center gap-2 text-xs border-b border-gray-800/80 pb-1.5 mb-2">
+                        <span className={`font-bold ${post.isSystem ? 'text-emerald-400' : 'text-emerald-500'}`}>
+                          {post.author}
+                        </span>
+                        {post.actualName && !post.isSystem && (
+                          <span className="text-gray-400 font-mono text-[11px]">({post.actualName})</span>
+                        )}
+                        <span className="text-emerald-700 font-mono text-[11px]">{post.trip}</span>
+                        <span className="text-gray-500 text-[11px]">{post.timestamp}</span>
+
+                        {/* Ban button for Admin */}
+                        {currentUser.isAdmin && !post.isSystem && post.author !== currentUser.username && (
+                          <button
+                            onClick={() => handleBanUser(post.author)}
+                            className="text-gray-600 hover:text-rose-400 text-[11px] flex items-center gap-1 font-mono transition"
+                            title={`Ban @${post.author}`}
+                          >
+                            <BanIcon /> Ban
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            setReplyingTo(post.id);
+                            setMessage(prev => `>>${post.id}\n` + prev);
+                            messageInputRef.current?.focus();
+                          }}
+                          className="text-gray-600 hover:text-emerald-400 font-mono ml-auto text-[11px] transition"
+                        >
+                          No.{post.id}
+                        </button>
+                      </div>
+
+                      {/* Quoted Post Highlight */}
+                      {post.replyTo && (
+                        <div className="text-[11px] text-gray-500 font-mono mb-2 border-l-2 border-emerald-800 pl-2">
+                          Replying to &gt;&gt;No.{post.replyTo}
+                        </div>
+                      )}
+
+                      {/* FILE ATTACHMENT DISPLAY */}
+                      {post.file && (
+                        <div className="mb-2.5 p-2.5 bg-gray-900 border border-gray-800 rounded flex flex-wrap items-center gap-3 text-xs">
+                          {post.file.isImage ? (
+                            <div className="cursor-pointer group relative" onClick={() => setLightboxImg(post.file.dataUrl)}>
+                              <img
+                                src={post.file.dataUrl}
+                                alt={post.file.name}
+                                className="w-20 h-20 object-cover rounded border border-gray-700 group-hover:border-emerald-500 transition"
+                              />
+                            </div>
+                          ) : post.file.isAudio ? (
+                            <audio controls src={post.file.dataUrl} className="h-8 max-w-xs" />
+                          ) : (
+                            <div className="w-10 h-10 bg-gray-800 rounded flex items-center justify-center text-emerald-400 font-bold">
+                              📄
+                            </div>
+                          )}
+
+                          <div className="flex-1 min-w-[140px]">
+                            <div className="font-semibold text-gray-200">{post.file.name}</div>
+                            <div className="text-gray-500 text-[11px]">{post.file.size}</div>
+                          </div>
+
+                          <a
+                            href={post.file.dataUrl}
+                            download={post.file.name}
+                            className="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 hover:text-emerald-400 rounded text-xs flex items-center gap-1"
+                          >
+                            <DownloadIcon /> Download
+                          </a>
+                        </div>
+                      )}
+
+                      {/* POST CONTENT */}
+                      <div className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed font-mono">
+                        {formatGreentext(post.content)}
+                      </div>
+
+                      {/* EMOJI REACTIONS DISPLAY (REAL-TIME VIA SOCKETS) */}
+                      <div className="mt-2.5 pt-1.5 border-t border-gray-800/40 flex flex-wrap items-center gap-1.5 text-xs">
+                        {post.reactions && Object.entries(post.reactions).map(([emoji, users]) => {
+                          if (!users || users.length === 0) return null;
+                          const hasReacted = currentUser && users.includes(currentUser.username);
+                          return (
+                            <button
+                              key={emoji}
+                              onClick={() => handleToggleReaction(post.id, emoji)}
+                              className={`px-2 py-0.5 rounded-full flex items-center gap-1 border transition text-xs font-mono ${
+                                hasReacted
+                                  ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300 font-bold'
+                                  : 'bg-gray-900 border-gray-800 text-gray-400 hover:border-gray-700'
+                              }`}
+                              title={`Reacted by: ${users.join(', ')}`}
+                            >
+                              <span>{emoji}</span>
+                              <span className="text-[11px]">{users.length}</span>
+                            </button>
+                          );
+                        })}
+
+                        {/* Add Reaction Button */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setActiveEmojiPickerPostId(activeEmojiPickerPostId === post.id ? null : post.id)}
+                            className="px-2 py-0.5 rounded-full bg-gray-900/60 hover:bg-gray-800 border border-gray-800 text-gray-400 hover:text-emerald-400 text-xs flex items-center gap-1 transition"
+                            title="React with emoji"
+                          >
+                            <SmileIcon />
+                            <span className="text-[10px]">+</span>
+                          </button>
+
+                          {/* Emoji Picker Popover */}
+                          {activeEmojiPickerPostId === post.id && (
+                            <div className="absolute left-0 bottom-7 bg-gray-950 border border-emerald-600/70 rounded-lg p-1.5 shadow-2xl flex items-center gap-1 z-30">
+                              {AVAILABLE_EMOJIS.map((emoji) => (
+                                <button
+                                  key={emoji}
+                                  onClick={() => handleToggleReaction(post.id, emoji)}
+                                  className="w-7 h-7 flex items-center justify-center hover:bg-emerald-950 rounded text-sm transition transform hover:scale-125"
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* INPUT SECTION & SLASH COMMANDS AUTOCOMPLETE */}
+              <div className="relative bg-gray-900/95 border-t border-gray-800 p-3 sm:p-3.5 space-y-2">
+                
+                {/* SLASH COMMAND AUTOCOMPLETE DROPDOWN */}
+                {showSlashHints && (
+                  <div className="absolute left-3 right-3 bottom-full mb-1 bg-gray-950 border border-emerald-500/80 rounded-lg p-2 shadow-2xl z-40 max-h-56 overflow-y-auto space-y-1 custom-scrollbar">
+                    <div className="text-[11px] font-bold text-emerald-400 px-2 py-1 border-b border-gray-800 flex items-center justify-between">
+                      <span>JARVIS TACTICAL SLASH COMMANDS</span>
+                      <span className="text-gray-500 text-[10px]">Click or hit Enter to execute</span>
+                    </div>
+                    {SLASH_COMMANDS.map((sc) => (
+                      <button
+                        key={sc.cmd}
+                        onClick={() => {
+                          setMessage(sc.cmd);
+                          setShowSlashHints(false);
+                          messageInputRef.current?.focus();
+                        }}
+                        className="w-full text-left px-2.5 py-1.5 rounded hover:bg-emerald-950/80 text-xs flex items-center justify-between text-gray-200 transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>{sc.icon}</span>
+                          <span className="font-bold text-emerald-400 font-mono">{sc.cmd}</span>
+                        </div>
+                        <span className="text-[11px] text-gray-400 truncate max-w-xs">{sc.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* SENDER IDENTITY BAR */}
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  <div className="flex items-center gap-1.5 bg-gray-950 border border-gray-800 rounded px-2.5 py-1">
+                    <span className="text-gray-500">Posting to:</span>
+                    <span className="text-emerald-400 font-semibold font-mono">
+                      {activeChatTarget.type === 'channel' ? activeChatTarget.id : `@${activeChatTarget.id}`}
+                    </span>
+                  </div>
+
+                  {replyingTo && (
+                    <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-800 text-emerald-300 px-2 py-0.5 rounded text-[11px]">
+                      <span>Replying to No.{replyingTo}</span>
+                      <button type="button" onClick={() => setReplyingTo(null)} className="text-red-400 font-bold ml-1">✕</button>
+                    </div>
+                  )}
+
+                  {attachedFile && (
+                    <div className="flex items-center gap-2 bg-emerald-950/60 border border-emerald-800 text-emerald-300 px-2 py-0.5 rounded text-xs">
+                      <span>📎 {attachedFile.name}</span>
+                      <button type="button" onClick={() => setAttachedFile(null)} className="text-red-400 font-bold ml-1">✕</button>
+                    </div>
+                  )}
+
+                  {isScanningFile && (
+                    <span className="text-amber-400 animate-pulse text-[11px]">JARVIS scanning payload headers...</span>
+                  )}
+                </div>
+
+                {/* TEXTAREA INPUT */}
+                <form onSubmit={handlePostSubmit} className="space-y-2">
+                  <textarea
+                    ref={messageInputRef}
+                    value={message}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setMessage(val);
+                      setShowSlashHints(val.startsWith('/') && val.length <= 4);
+                    }}
+                    placeholder={`Message ${activeChatTarget.id}... (Type / for commands, @JARVIS to talk)`}
+                    rows="2"
+                    className="w-full bg-gray-950 border border-gray-800 rounded p-2.5 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-emerald-500 font-mono resize-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handlePostSubmit(e);
+                      }
+                    }}
+                  />
+
+                  {/* BOTTOM ACTIONS BAR */}
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 hover:text-emerald-400 rounded text-xs flex items-center gap-1.5 transition"
+                      >
+                        <UploadIcon />
+                        <span>File</span>
+                      </button>
+
+                      {/* Quick Commands Chips */}
+                      <button
+                        type="button"
+                        onClick={() => { setMessage('/hack'); messageInputRef.current?.focus(); }}
+                        className="px-2 py-1 bg-red-950/50 hover:bg-red-900 border border-red-800/60 text-red-300 rounded text-[11px] font-mono"
+                      >
+                        /hack
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setMessage('/defend'); messageInputRef.current?.focus(); }}
+                        className="px-2 py-1 bg-emerald-950/50 hover:bg-emerald-900 border border-emerald-800/60 text-emerald-300 rounded text-[11px] font-mono"
+                      >
+                        /defend
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setMessage('@JARVIS '); messageInputRef.current?.focus(); }}
+                        className="px-2 py-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-emerald-400 rounded text-[11px] font-mono"
+                      >
+                        @JARVIS
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="submit"
+                        disabled={!message.trim() && !attachedFile}
+                        className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded text-xs flex items-center gap-1.5 transition"
+                      >
+                        <SendIcon />
+                        <span>Send</span>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </main>
+          </div>
+
+          {/* MASTER ADMIN DASHBOARD MODAL (APPROVALS & BAN MANAGEMENT) */}
+          {isRequestsModalOpen && (
+            <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+              <div className="bg-gray-950 border border-emerald-500/60 rounded-xl max-w-2xl w-full shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+                <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setAdminModalTab('approvals')}
+                      className={`font-bold pb-0.5 border-b-2 text-xs flex items-center gap-1.5 ${
+                        adminModalTab === 'approvals' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-gray-400 hover:text-gray-200'
+                      }`}
+                    >
+                      <UserCheckIcon /> Access Approvals ({pendingCount})
+                    </button>
+                    <button
+                      onClick={() => setAdminModalTab('banned')}
+                      className={`font-bold pb-0.5 border-b-2 text-xs flex items-center gap-1.5 ${
+                        adminModalTab === 'banned' ? 'border-rose-500 text-rose-400' : 'border-transparent text-gray-400 hover:text-gray-200'
+                      }`}
+                    >
+                      <BanIcon /> Banned Members ({bannedUsersList.length})
+                    </button>
+                  </div>
+                  <button onClick={() => setIsRequestsModalOpen(false)} className="text-gray-400 hover:text-red-400 font-mono text-base">✕</button>
+                </div>
+
+                <div className="p-4 overflow-y-auto flex-1 space-y-3 custom-scrollbar">
+                  {adminModalTab === 'approvals' ? (
+                    <>
+                      <div className="flex items-center justify-between p-2.5 bg-emerald-950/30 border border-emerald-900/60 rounded text-xs text-gray-300">
+                        <span>Direct Website Link for Friends:</span>
+                        <button
+                          onClick={handleCopyInviteLink}
+                          className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-black font-semibold rounded text-[11px] flex items-center gap-1"
+                        >
+                          <CopyIcon /> {copiedLink ? 'Copied!' : 'Copy Link'}
+                        </button>
+                      </div>
+
+                      {accessRequests.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500 text-xs font-mono">
+                          No inbound access requests currently.
+                        </div>
+                      ) : (
+                        accessRequests.map((req) => (
+                          <div
+                            key={req.id}
+                            className="p-3 bg-gray-900 border border-gray-800 rounded-lg flex flex-wrap items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-gray-100 text-sm">{req.actualName}</span>
+                                <span className="text-emerald-400 font-mono">@{req.username}</span>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                  req.status === 'approved' ? 'bg-emerald-950 text-emerald-300 border border-emerald-700' :
+                                  req.status === 'denied' ? 'bg-red-950 text-red-300 border border-red-700' :
+                                  'bg-amber-950 text-amber-300 border border-amber-700'
+                                }`}>
+                                  {req.status}
+                                </span>
+                              </div>
+                              {req.note && <div className="text-gray-400 italic text-[11px]">"{req.note}"</div>}
+                              <div className="text-gray-500 text-[10px] font-mono">Requested at: {req.requestedAt}</div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {req.status === 'pending' ? (
+                                <>
+                                  <button
+                                    onClick={() => handleResolveRequest(req.id, 'approve')}
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-black font-bold rounded text-xs"
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() => handleResolveRequest(req.id, 'deny')}
+                                    className="px-3 py-1.5 bg-red-950 hover:bg-red-900 border border-red-800 text-red-300 rounded text-xs"
+                                  >
+                                    Deny
+                                  </button>
+                                </>
+                              ) : req.status === 'approved' ? (
+                                <button
+                                  onClick={() => handleBanUser(req.username)}
+                                  className="px-2.5 py-1 bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 rounded text-[11px] flex items-center gap-1"
+                                >
+                                  <BanIcon /> Ban Member
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </>
+                  ) : (
+                    /* BANNED MEMBERS TAB */
+                    <div className="space-y-2">
+                      <div className="text-xs text-gray-400 font-mono mb-2">
+                        Permanently banned users are locked out from accessing any channels or chat.
+                      </div>
+                      {bannedUsersList.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500 text-xs font-mono">
+                          No users are currently banned.
+                        </div>
+                      ) : (
+                        bannedUsersList.map((bu) => (
+                          <div
+                            key={bu.username}
+                            className="p-3 bg-rose-950/30 border border-rose-900/60 rounded-lg flex items-center justify-between text-xs"
+                          >
+                            <div>
+                              <div className="font-bold text-rose-300 text-sm">@{bu.username}</div>
+                              <div className="text-gray-400 text-[11px]">Reason: {bu.reason}</div>
+                              <div className="text-gray-500 text-[10px] font-mono">Banned at: {bu.bannedAt}</div>
+                            </div>
+                            <button
+                              onClick={() => handleUnbanUser(bu.username)}
+                              className="px-3 py-1 bg-gray-800 hover:bg-emerald-800 text-gray-200 hover:text-white rounded text-xs font-semibold"
+                            >
+                              Lift Ban / Restore
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* JARVIS SENTINEL TERMINAL CONSOLE */}
+          {isTerminalOpen && (
+            <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+              <div className="bg-gray-950 border border-emerald-500/70 rounded-lg max-w-3xl w-full shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+                <div className="bg-gray-900 border-b border-gray-800 px-4 py-2.5 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                    <TerminalIcon />
+                    <span>JARVIS_DEFENSE_SENTINEL // v4.5 MATRIX CORE</span>
+                  </div>
+                  <button onClick={() => setIsTerminalOpen(false)} className="text-gray-400 hover:text-red-400 font-mono text-sm px-1.5">✕</button>
+                </div>
+
+                <div className="p-4 overflow-y-auto flex-1 font-mono text-xs space-y-1 text-gray-300 custom-scrollbar bg-black/90">
+                  {securityState.systemAuditLogs.map((log, idx) => (
+                    <div
+                      key={idx}
+                      className={
+                        log.includes('ALERT') || log.includes('BLOCKED') || log.includes('BANNED') ? 'text-red-400' :
+                        log.includes('GRANTED') || log.includes('SUCCESS') || log.includes('ONLINE') ? 'text-emerald-400' :
+                        'text-gray-400'
+                      }
+                    >
+                      {log}
+                    </div>
+                  ))}
+                  <div ref={terminalEndRef} />
+                </div>
+
+                <form onSubmit={handleTerminalSubmit} className="bg-gray-900 border-t border-gray-800 p-2.5 flex items-center gap-2 text-xs font-mono">
+                  <span className="text-emerald-500 font-bold pl-2">jarvis@sentinel:~#</span>
+                  <input
+                    type="text"
+                    value={terminalInput}
+                    onChange={(e) => setTerminalInput(e.target.value)}
+                    placeholder="Enter tactical command (/hack, /defend, /scan, /status)..."
+                    className="flex-1 bg-transparent text-gray-200 focus:outline-none placeholder-gray-600"
+                  />
+                  <button type="submit" className="px-3.5 py-1 bg-emerald-600 text-black font-bold rounded hover:bg-emerald-500 text-xs">
+                    Execute
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* IMAGE LIGHTBOX */}
+          {lightboxImg && (
+            <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 cursor-pointer" onClick={() => setLightboxImg(null)}>
+              <img src={lightboxImg} alt="Payload preview" className="max-w-full max-h-[90vh] object-contain rounded shadow-2xl border border-gray-800" />
+            </div>
+          )}
+
+          {/* FOOTER */}
+          <footer className="mt-2 text-center text-[11px] text-gray-600 font-mono">
+            REPLICA PRIVATE CYBERBOARD &bull; OWNER: {MASTER_ADMIN_EMAIL} &bull; SHIELDED BY JARVIS AI SENTINEL &bull; NO LOGS PERSISTED
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<ReplicaApp />);
+  </script>
+</body>
+</html>
