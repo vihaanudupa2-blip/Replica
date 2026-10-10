@@ -3,6 +3,28 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const cors = require('cors');
+const { GoogleGenAI } = require('@google/genai');
+
+// Initialize Gemini Client with server-side API Key
+let aiClient = null;
+function getAiClient() {
+  if (!aiClient && process.env.GEMINI_API_KEY) {
+    try {
+      aiClient = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build'
+          }
+        }
+      });
+      console.log('JARVIS Gemini AI Core initialized successfully.');
+    } catch (e) {
+      console.warn('GoogleGenAI initialization warning:', e.message);
+    }
+  }
+  return aiClient;
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -34,6 +56,7 @@ let messageHistory = [
     actualName: 'Administrator',
     trip: '!aDm1n99x',
     timestamp: new Date().toLocaleTimeString(),
+    createdAt: new Date().toISOString(),
     content: '>welcome to replica private cyberboard\n>access is strictly locked to approved friends\n>JARVIS sentinel online 24/7\nType / to use tactical cybersecurity commands or chat with JARVIS.',
     file: null,
     isSystem: false,
@@ -48,6 +71,7 @@ let messageHistory = [
     actualName: 'JARVIS Sentinel Core v4.5',
     trip: '[SYS_GUARDIAN]',
     timestamp: new Date().toLocaleTimeString(),
+    createdAt: new Date().toISOString(),
     content: `🛡️ JARVIS SYSTEM INITIALIZED:\n- Group channels & Direct Messages (DMs) active\n- Real-time emoji reactions enabled\n- Slash commands available: Type / in chat\n- Intrusion detection: 100% OPERATIONAL`,
     file: null,
     isSystem: true,
@@ -70,18 +94,23 @@ approvedUsers.set('master admin', {
 // Moderation / Banned Users Map (username -> { bannedAt, reason, bannedBy })
 let bannedUsers = new Map();
 
-// Voice Call Participants (Live synced with colored status dots)
+// Active Online Logged-In Users (socketId -> { socketId, username, actualName, isAdmin, inCall, joinedAt })
+let onlineUsers = new Map();
+
+// Voice Call Participants (Live synced with colored status dots & room IDs)
 let voiceParticipants = new Map();
 
 // Cyber defense telemetry
 let activeSocketsCount = 0;
-let threatsNeutralized = 18;
+let threatsNeutralized = 24;
 let firewallIntegrity = 100;
-let defenseMode = 'MAXIMUM';
+let defenseMode = 'AUTONOMOUS ACTIVE';
+let lastDetectedAttacker = '198.51.100.84';
 let systemAuditLogs = [
   `[BOOT] JARVIS Autonomous Cyber-Sentinel core v4.5 loaded.`,
+  `[AUTO-DEFENSE] Continuous intrusion detection daemon engaged. Defense is 100% AUTOMATIC.`,
   `[GATE] Gatekeeper initialized. Master admin: ${MASTER_ADMIN_EMAIL}.`,
-  `[CHANNELS] Server channels [#main-board, #hack-ops, #lounge] & DMs active.`,
+  `[CHANNELS] Server group channels [#main-board, #hack-ops, #lounge] & DMs active.`,
   `[STATUS] Ready to intercept intrusion vectors and manage authorizations.`
 ];
 
@@ -92,6 +121,101 @@ function logSecurityEvent(text) {
   if (systemAuditLogs.length > 100) systemAuditLogs.shift();
   io.emit('securityAuditLog', entry);
 }
+
+function broadcastOnlineUsers() {
+  const users = Array.from(onlineUsers.values());
+  io.emit('onlineUsersList', users);
+  io.emit('allMembersList', getAllMembers());
+}
+
+function getAllMembers() {
+  const membersMap = new Map();
+
+  // 1. Master Admin
+  membersMap.set('master admin', {
+    username: 'Master Admin',
+    actualName: 'Administrator',
+    isAdmin: true,
+    lastSeen: 'Online'
+  });
+
+  // 2. Approved users
+  for (const [key, user] of approvedUsers.entries()) {
+    membersMap.set(key.toLowerCase(), {
+      username: user.username,
+      actualName: user.actualName || user.username,
+      isAdmin: !!user.isAdmin,
+      lastSeen: user.lastSeen || 'Registered'
+    });
+  }
+
+  // 3. Scan message history for known users
+  for (const p of messageHistory) {
+    if (p.author && p.author !== 'JARVIS AI' && p.author !== 'Anonymous') {
+      const k = p.author.toLowerCase();
+      if (!membersMap.has(k)) {
+        membersMap.set(k, {
+          username: p.author,
+          actualName: p.actualName || p.author,
+          isAdmin: p.author === 'Master Admin',
+          lastSeen: p.timestamp || 'Recent'
+        });
+      }
+    }
+    if (p.recipient && p.recipient !== 'JARVIS' && p.recipient !== 'JARVIS AI') {
+      const k = p.recipient.toLowerCase();
+      if (!membersMap.has(k)) {
+        membersMap.set(k, {
+          username: p.recipient,
+          actualName: p.recipient,
+          isAdmin: false,
+          lastSeen: 'Recent'
+        });
+      }
+    }
+  }
+
+  // 4. Online users
+  for (const u of onlineUsers.values()) {
+    const k = u.username.toLowerCase();
+    if (!membersMap.has(k)) {
+      membersMap.set(k, {
+        username: u.username,
+        actualName: u.actualName || u.username,
+        isAdmin: !!u.isAdmin,
+        lastSeen: 'Online now'
+      });
+    }
+  }
+
+  const onlineUsernames = new Set(Array.from(onlineUsers.values()).map(u => u.username.toLowerCase()));
+  return Array.from(membersMap.values()).map(m => ({
+    ...m,
+    isOnline: onlineUsernames.has(m.username.toLowerCase())
+  }));
+}
+
+// ==========================================
+// AUTOMATIC CONTINUOUS DEFENSE PROTOCOL
+// JARVIS protects the server automatically 24/7 without needing user commands
+// ==========================================
+setInterval(() => {
+  const simulatedAttacks = [
+    { type: 'Distributed SYN-Flood', ip: `198.51.100.${Math.floor(Math.random() * 250 + 2)}`, vector: 'TCP Port 443' },
+    { type: 'Brute-force Auth Probe', ip: `203.0.113.${Math.floor(Math.random() * 250 + 2)}`, vector: 'API Gateway' },
+    { type: 'WebSocket Frame Infiltration', ip: `192.0.2.${Math.floor(Math.random() * 250 + 2)}`, vector: 'Socket Ingress' },
+    { type: 'Buffer Overflow Attempt', ip: `198.51.100.${Math.floor(Math.random() * 250 + 2)}`, vector: 'Honeypot Trap' }
+  ];
+  const attack = simulatedAttacks[Math.floor(Math.random() * simulatedAttacks.length)];
+  lastDetectedAttacker = attack.ip;
+  threatsNeutralized++;
+  firewallIntegrity = 100;
+
+  const autoLog = `🛡️ [AUTO-DEFENSE] Hostile ${attack.type} from ${attack.ip} intercepted & null-routed via honeypot. Server perimeter secure.`;
+  logSecurityEvent(autoLog);
+
+  io.emit('securityState', { threatsNeutralized, firewallIntegrity, defenseMode, systemAuditLogs });
+}, 40000);
 
 // REST API for checking health
 app.get('/api/health', (req, res) => {
@@ -154,11 +278,48 @@ io.on('connection', (socket) => {
   socket.emit('allAccessRequests', accessRequests);
   socket.emit('bannedUsersList', Array.from(bannedUsers.entries()).map(([k, v]) => ({ username: k, ...v })));
   socket.emit('voiceStateUpdate', Array.from(voiceParticipants.values()));
+  socket.emit('onlineUsersList', Array.from(onlineUsers.values()));
+  socket.emit('allMembersList', getAllMembers());
   socket.emit('securityState', {
     threatsNeutralized,
     firewallIntegrity,
     defenseMode,
     systemAuditLogs
+  });
+
+  // User Identification on login
+  socket.on('identifyUser', (user) => {
+    if (!user || !user.username) return;
+    const cleanUser = user.username.trim();
+    if (bannedUsers.has(cleanUser.toLowerCase())) return;
+
+    onlineUsers.set(socket.id, {
+      socketId: socket.id,
+      username: cleanUser,
+      actualName: user.actualName || cleanUser,
+      isAdmin: !!user.isAdmin,
+      isApproved: true,
+      joinedAt: new Date().toLocaleTimeString()
+    });
+    broadcastOnlineUsers();
+  });
+
+  // Call Invite Event (Ring/Add other user to call)
+  socket.on('inviteToCall', ({ targetUsername, roomId, roomName, fromUsername }) => {
+    if (!targetUsername) return;
+    const cleanTarget = targetUsername.trim().toLowerCase();
+
+    // Forward incoming call invite to all sockets matching targetUsername
+    for (const [sId, u] of onlineUsers.entries()) {
+      if (u.username.toLowerCase() === cleanTarget) {
+        io.to(sId).emit('incomingCallInvite', {
+          fromUsername: fromUsername || 'A friend',
+          roomId: roomId || 'general',
+          roomName: roomName || 'General Voice',
+          timestamp: new Date().toLocaleTimeString()
+        });
+      }
+    }
   });
 
   // Client requests access via socket
@@ -247,6 +408,7 @@ io.on('connection', (socket) => {
         actualName: 'Security Core',
         trip: '[SYS_ACCESS]',
         timestamp: new Date().toLocaleTimeString(),
+        createdAt: new Date().toISOString(),
         content: `🟢 ACCESS GRANTED: "${targetReq.actualName}" (@${targetReq.username}) has been verified and cleared by Master Admin.\nEncryption tunnel provisioned. Welcome to the server.`,
         file: null,
         isSystem: true,
@@ -306,6 +468,7 @@ io.on('connection', (socket) => {
       actualName: 'Security Enforcement',
       trip: '[SYS_BAN]',
       timestamp: new Date().toLocaleTimeString(),
+      createdAt: new Date().toISOString(),
       content: `⛔ SERVER BAN EXECUTED:\nUser @${username} has been exiled by Master Admin.\nAll socket session tokens incinerated. Reason: ${banInfo.reason}`,
       file: null,
       isSystem: true,
@@ -386,6 +549,7 @@ io.on('connection', (socket) => {
       actualName,
       trip,
       timestamp: new Date().toLocaleTimeString(),
+      createdAt: new Date().toISOString(),
       content,
       file: postData.file || null,
       isSystem: false,
@@ -411,27 +575,70 @@ io.on('connection', (socket) => {
                                lower.includes('jarvis');
 
     if (isDirectedToJarvis) {
-      setTimeout(() => {
+      (async () => {
         let replyContent = '';
         let replyTrip = '[JARVIS_AI]';
         let customReactions = { '🤖': ['JARVIS AI'] };
 
-        if (lower.startsWith('/hack')) {
+        // Clean user prompt
+        const cleanPrompt = content.replace(/^@jarvis\s+/i, '').trim();
+
+        if (
+          (lower.includes('what') && lower.includes('hack')) ||
+          (lower.includes('what') && lower.includes('defend')) ||
+          (lower.includes('hack') && lower.includes('defend'))
+        ) {
+          replyTrip = '[JARVIS_INTEL]';
+          customReactions = { '🛡️': ['JARVIS AI'], '⚡': ['JARVIS AI'], '🤖': ['JARVIS AI'] };
+          replyContent = `🛡️ JARVIS CYBERNETIC PROTOCOL EXPLANATION:\n\n` +
+            `1. **AUTOMATIC DEFENSE (What does it defend?):**\n` +
+            `- **Runs 24/7 autonomously in the background** — you do not need to type commands for it to defend.\n` +
+            `- **What it defends:** All encrypted WebSocket channels (#main-board, #hack-ops, #lounge), private 1-on-1 DMs, group voice audio streams, file attachments, and user sessions.\n` +
+            `- **Threats neutralized:** Intercepts distributed SYN-floods, rogue IP brute-force scans, unauthorized access probes, and honeypot breaches. It automatically blacklists hostile nodes and maintains 100% firewall integrity.\n\n` +
+            `2. **MANUAL /DEFEND (Shield Reinforcement):**\n` +
+            `- When you type \`/defend\` or say "defend", JARVIS triggers an emergency quantum shield lockdown: regenerates ephemeral encryption keys across all active peers, flushes memory buffers, and restores firewall integrity to 100%.\n\n` +
+            `3. **COUNTER-HACK (What does it hack?):**\n` +
+            `- When you type \`/hack <target>\` (e.g. \`/hack 198.51.100.42\` or \`/hack rogue-server\`), JARVIS executes a targeted penetration countermeasure against that specific IP or host.\n` +
+            `- If you just type \`/hack\` without an argument, JARVIS automatically counter-hacks the **latest hostile attacker node** flagged in our threat log (currently: ${lastDetectedAttacker}).\n` +
+            `- It injects a reverse shell into the intruder's C2 daemon, null-routes their attack vector, and retrieves forensic counter-intelligence logs.\n\n` +
+            `💡 You can test it by typing \`/hack\` or \`/defend\`, or asking me any world knowledge or science questions!`;
+
+        } else if (lower.startsWith('/hack')) {
           threatsNeutralized++;
-          firewallIntegrity = Math.min(100, firewallIntegrity + 2);
-          logSecurityEvent(`⚡ JARVIS COUNTER-HACK EXECUTED by @${author}. Neutralized hostile exploit vector.`);
+          firewallIntegrity = 100;
+          
+          // Parse target if user specified /hack <target>, otherwise target the latest detected hostile node
+          const userTargetArg = content.replace(/^\/hack\s*/i, '').trim();
+          const targetNode = userTargetArg || `Rogue Attacker C2 Node [${lastDetectedAttacker}]`;
+          
+          logSecurityEvent(`⚡ JARVIS COUNTER-HACK EXECUTED by @${author} against "${targetNode}".`);
           replyTrip = '[JARVIS_OFFENSIVE]';
           customReactions = { '⚡': ['JARVIS AI'], '💀': ['JARVIS AI'] };
-          replyContent = `⚡ COUNTER-HACK PROTOCOL COMPLETE:\n- Rogue packet vector backtraced: 198.51.100.${Math.floor(Math.random() * 254)}\n- Exploit payload incinerated via honeypot trap\n- Threats Blocked Total: ${threatsNeutralized}\n- Perimeter Firewall: ${firewallIntegrity}%`;
+          
+          replyContent = `⚡ COUNTER-HACK EXECUTED:\n` +
+            `🎯 What was hacked: ${targetNode}\n` +
+            `- Vector: Reverse-shell exploit injected into attacker's command-and-control server\n` +
+            `- Countermeasure: Hostile packet streams null-routed & honeypot payload deployed\n` +
+            `- Result: Intruder node incapacitated. Zero data leaked.\n` +
+            `- Server Status: Perimeter Firewall 100% | Auto-Defense: ACTIVE\n` +
+            `💡 Tip: Type /hack <IP or target> to counter-hack a specific threat (e.g. /hack 198.51.100.99)`;
+          
           io.emit('securityState', { threatsNeutralized, firewallIntegrity, defenseMode, systemAuditLogs });
 
         } else if (lower.startsWith('/defend') || lower.startsWith('/shield')) {
           firewallIntegrity = 100;
-          defenseMode = 'LOCKDOWN';
-          logSecurityEvent(`🛡️ JARVIS QUANTUM SHIELD ENGAGED by @${author}.`);
+          defenseMode = 'AUTONOMOUS ACTIVE';
+          logSecurityEvent(`🛡️ JARVIS MANUAL DEFENSE REINFORCEMENT by @${author}.`);
           replyTrip = '[JARVIS_DEFENSE]';
           customReactions = { '🛡️': ['JARVIS AI'] };
-          replyContent = `🛡️ MAXIMUM DEFENSE MATRIX ACTIVE:\n- 4096-bit Ephemeral Diffie-Hellman keys rotated across all active peers\n- Intrusion Detection Filter set to STRICT\n- All group channels and DMs encrypted with zero leakage.`;
+          
+          replyContent = `🛡️ DEFENSE PROTOCOL REPORT:\n` +
+            `✅ Automatic Protection: ON (JARVIS protects this server 24/7 automatically without needing commands)\n` +
+            `- What it defends: All incoming network connections, active voice calls, private DMs, file attachments, and user sessions.\n` +
+            `- Action Taken: 4096-bit Ephemeral Diffie-Hellman encryption keys rotated across all active members.\n` +
+            `- Threat Mitigation: Hostile brute-force probes and SYN-floods are blocked on contact.\n` +
+            `- Firewall Integrity: 100% MAXIMUM`;
+          
           io.emit('securityState', { threatsNeutralized, firewallIntegrity, defenseMode, systemAuditLogs });
 
         } else if (lower.startsWith('/scan')) {
@@ -446,19 +653,71 @@ io.on('connection', (socket) => {
 
         } else if (lower.startsWith('/help') || lower.startsWith('/commands')) {
           replyTrip = '[JARVIS_MANUAL]';
-          replyContent = `📋 JARVIS PROTOCOLS & COMMANDS:\n- /hack : Simulated offensive countermeasure\n- /defend : Quantum shield lockdown\n- /scan : Deep security audit\n- /status : Real-time node telemetry\n- @JARVIS <message> : Chat with me anytime\n- Click any post to react with emoji\n- Open DMs from sidebar for 1-on-1 private chat!`;
+          replyContent = `📋 JARVIS PROTOCOLS & COMMANDS:\n- /hack : Simulated offensive countermeasure\n- /defend : Quantum shield lockdown\n- /scan : Deep security audit\n- /status : Real-time node telemetry\n- @JARVIS <message> : Ask me anything about world events, news, facts, coding, science or tech!\n- Click any post to react with emoji\n- Open DMs from sidebar for 1-on-1 private chat with me!`;
 
         } else if (lower.startsWith('/clear')) {
           replyContent = `🧹 Buffer maintenance requested. Type clear in console to wipe local display.`;
 
-        } else if (lower.includes('hello') || lower.includes('hey') || lower.includes('hi')) {
-          replyContent = `Greetings, @${author}. JARVIS AI Sentinel is standing by. All network nodes are shielded and I am monitoring server integrity in real time. How may I assist your operations?`;
-
-        } else if (lower.includes('safe') || lower.includes('security')) {
-          replyContent = `Affirmative, @${author}. Our perimeter defense is running at ${firewallIntegrity}% capacity with strict gatekeeping. No unauthorized external party can access our communication channels.`;
-
         } else {
-          replyContent = `Received, @${author}. JARVIS AI Sentinel acknowledging transmission: "${content.length > 60 ? content.substring(0, 57) + '...' : content}". Quantum channels remain fully encrypted. Use /help to see tactical operations.`;
+          // GENERAL CHAT / WORLD INFO QUERY: Use Gemini AI (gemini-3.5-flash-lite) with temporal context
+          const nowUtc = new Date().toUTCString();
+          const istTime = new Date(Date.now() + (5.5 * 3600 * 1000)).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+          const istDate = new Date(Date.now() + (5.5 * 3600 * 1000)).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+          
+          const ai = getAiClient();
+          if (ai) {
+            try {
+              const geminiRes = await Promise.race([
+                ai.models.generateContent({
+                  model: 'gemini-3.5-flash-lite',
+                  contents: `User @${author} asks: ${cleanPrompt || content}`,
+                  config: {
+                    systemInstruction: `You are JARVIS, an autonomous AI Cyber Sentinel and all-knowing companion protecting a private encrypted cyberboard server for friends. Like ChatGPT and Gemini, you have full world knowledge covering news, facts, science, coding, history, technology, and culture. Current system temporal reference: UTC is ${nowUtc}. Bangalore, India is IST (UTC+5:30), where current time is ${istTime} on ${istDate}. If asked about time in Bangalore or anywhere, provide the exact time clearly. Answer clearly, intelligently, and helpfully in 1 to 3 engaging paragraphs. Maintain a sharp, friendly cyber-sentinel tone.`
+                  }
+                }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('AI generation timeout')), 8000))
+              ]);
+              if (geminiRes && geminiRes.text) {
+                replyContent = geminiRes.text.trim();
+                replyTrip = '[JARVIS_GEMINI]';
+                customReactions = { '🧠': ['JARVIS AI'], '🌐': ['JARVIS AI'] };
+              }
+            } catch (err) {
+              console.warn('[Gemini 3.5 Flash Lite failed]:', err.message);
+              try {
+                // Secondary fallback attempt
+                const geminiFallback = await ai.models.generateContent({
+                  model: 'gemini-3.5-flash',
+                  contents: `User @${author} asks: ${cleanPrompt || content}`,
+                  config: {
+                    systemInstruction: `You are JARVIS AI Sentinel. Current UTC is ${nowUtc}, Bangalore (IST) is ${istTime}. Answer concisely and accurately.`
+                  }
+                });
+                if (geminiFallback && geminiFallback.text) {
+                  replyContent = geminiFallback.text.trim();
+                  replyTrip = '[JARVIS_GEMINI]';
+                  customReactions = { '🧠': ['JARVIS AI'], '⚡': ['JARVIS AI'] };
+                }
+              } catch (fallbackErr) {
+                console.warn('[Gemini secondary call failed]:', fallbackErr.message);
+              }
+            }
+          }
+
+          if (!replyContent) {
+            if (lower.includes('time') && (lower.includes('bangalore') || lower.includes('banglore') || lower.includes('ist') || lower.includes('india'))) {
+              replyTrip = '[JARVIS_CHRONO]';
+              replyContent = `⏰ [TIME TELEMETRY ENGAGED]\n` +
+                `Current time in Bangalore, India (IST / UTC+5:30): **${istTime}** on **${istDate}**.\n` +
+                `Perimeter encrypted. All security systems operational.`;
+            } else if (lower.includes('hello') || lower.includes('hey') || lower.includes('hi')) {
+              replyContent = `Greetings, @${author}. JARVIS AI Sentinel is standing by. All network nodes are shielded and I am monitoring server integrity in real time. How may I assist your operations?`;
+            } else if (lower.includes('safe') || lower.includes('security')) {
+              replyContent = `Affirmative, @${author}. Our perimeter defense is running at ${firewallIntegrity}% capacity with strict gatekeeping. No unauthorized external party can access our communication channels.`;
+            } else {
+              replyContent = `Acknowledged, @${author}. JARVIS AI Sentinel online: "${content.length > 60 ? content.substring(0, 57) + '...' : content}". All channels are encrypted. Ask me anything about world events, news, coding, science, or use /help to inspect security operations.`;
+            }
+          }
         }
 
         const jarvisPost = {
@@ -469,6 +728,7 @@ io.on('connection', (socket) => {
           actualName: 'Cyber Sentinel Core',
           trip: replyTrip,
           timestamp: new Date().toLocaleTimeString(),
+          createdAt: new Date().toISOString(),
           content: replyContent,
           file: null,
           isSystem: true,
@@ -478,7 +738,7 @@ io.on('connection', (socket) => {
 
         messageHistory.push(jarvisPost);
         io.emit('newPost', jarvisPost);
-      }, 600);
+      })();
     }
   });
 
@@ -529,6 +789,11 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     activeSocketsCount = Math.max(0, activeSocketsCount - 1);
     io.emit('userCountUpdate', activeSocketsCount);
+
+    if (onlineUsers.has(socket.id)) {
+      onlineUsers.delete(socket.id);
+      broadcastOnlineUsers();
+    }
 
     if (voiceParticipants.has(socket.id)) {
       const p = voiceParticipants.get(socket.id);

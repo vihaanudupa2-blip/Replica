@@ -1,6 +1,6 @@
 {
   "name": "Replica Cyberboard",
-  "description": "Replica 4chan Cyberboard with Olive AI Sentinel",
+  "description": "Private Cyberboard with Master Admin Access Approval Gate, JARVIS AI Defense & Real-Time Voice Calling",
   "capabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
