@@ -68,8 +68,8 @@ let messageHistory = [
     channelId: '#main-board',
     recipient: null,
     author: 'JARVIS AI',
-    actualName: 'JARVIS Sentinel Core v4.5',
-    trip: '[SYS_GUARDIAN]',
+    actualName: 'JARVIS Core v4.5',
+    trip: '[SYS_AI]',
     timestamp: new Date().toLocaleTimeString(),
     createdAt: new Date().toISOString(),
     content: `🛡️ JARVIS SYSTEM INITIALIZED:\n- Group channels & Direct Messages (DMs) active\n- Real-time emoji reactions enabled\n- Slash commands available: Type / in chat\n- Intrusion detection: 100% OPERATIONAL`,
@@ -229,6 +229,172 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ==========================================
+// GMAIL INTEGRATION API PROXY
+// Passes Bearer Access Token directly to Google Gmail API
+// ==========================================
+let latestAdminGmailToken = null;
+
+function rememberAdminToken(authHeader) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    latestAdminGmailToken = authHeader;
+  }
+}
+
+async function sendAdminApprovalEmail(actualName, username, note) {
+  if (!latestAdminGmailToken) return false;
+  try {
+    const subject = `[Server Approval] Access Clearance Request: @${username} (${actualName})`;
+    const bodyText = `Hello Admin,\n\nA new user has requested approval to join the server:\n\n• Full Name: ${actualName}\n• Call-sign / Username: @${username}\n• Note: ${note || 'None'}\n• Timestamp: ${new Date().toLocaleString()}\n\nYou can review and approve this user:\n1. Open the website: click the "Approvals" button in the top bar\n2. Or open the "Gmail Workspace" tab inside the app to approve with one click\n\n— JARVIS Notification Core`;
+
+    const rawEmail = [
+      `To: ${MASTER_ADMIN_EMAIL}`,
+      `Subject: ${subject}`,
+      `Content-Type: text/plain; charset=utf-8`,
+      ``,
+      bodyText
+    ].join('\r\n');
+
+    const encoded = Buffer.from(rawEmail)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        Authorization: latestAdminGmailToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ raw: encoded })
+    });
+    return true;
+  } catch (err) {
+    console.warn('Server auto-send Gmail approval exception:', err.message);
+    return false;
+  }
+}
+
+app.post('/api/gmail/sync-token', (req, res) => {
+  const { token } = req.body || {};
+  if (token) {
+    latestAdminGmailToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+  }
+  res.json({ success: true, hasToken: !!latestAdminGmailToken });
+});
+
+app.get('/api/gmail/profile', async (req, res) => {
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ error: 'Missing Authorization header' });
+  rememberAdminToken(token);
+
+  try {
+    const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+      headers: { Authorization: token }
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/gmail/messages', async (req, res) => {
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ error: 'Missing Authorization header' });
+  rememberAdminToken(token);
+
+  try {
+    const q = req.query.q ? encodeURIComponent(req.query.q) : '';
+    const maxResults = req.query.maxResults || 20;
+    const labelIds = req.query.labelIds ? `&labelIds=${encodeURIComponent(req.query.labelIds)}` : '';
+    const url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${maxResults}${q ? `&q=${q}` : ''}${labelIds}`;
+    
+    const response = await fetch(url, {
+      headers: { Authorization: token }
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/gmail/messages/:id', async (req, res) => {
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ error: 'Missing Authorization header' });
+  rememberAdminToken(token);
+
+  try {
+    const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${req.params.id}?format=full`, {
+      headers: { Authorization: token }
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/gmail/send', async (req, res) => {
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ error: 'Missing Authorization header' });
+  rememberAdminToken(token);
+
+  try {
+    const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        Authorization: token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/gmail/messages/:id/trash', async (req, res) => {
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ error: 'Missing Authorization header' });
+
+  try {
+    const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${req.params.id}/trash`, {
+      method: 'POST',
+      headers: { Authorization: token }
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/gmail/messages/:id/modify', async (req, res) => {
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ error: 'Missing Authorization header' });
+
+  try {
+    const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${req.params.id}/modify`, {
+      method: 'POST',
+      headers: {
+        Authorization: token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 app.post('/api/request-access', (req, res) => {
   const { actualName, username, note } = req.body;
   if (!actualName || !username) {
@@ -257,6 +423,8 @@ app.post('/api/request-access', (req, res) => {
 
   logSecurityEvent(`🔔 INBOUND ACCESS REQUEST: "${newRequest.actualName}" (@${newRequest.username}) dispatched to ${MASTER_ADMIN_EMAIL}`);
 
+  sendAdminApprovalEmail(newRequest.actualName, newRequest.username, newRequest.note);
+
   io.emit('newAccessRequestNotification', newRequest);
   io.emit('allAccessRequests', accessRequests);
 
@@ -267,6 +435,77 @@ app.post('/api/request-access', (req, res) => {
     message: `Access request submitted. Awaiting approval from ${MASTER_ADMIN_EMAIL}.`
   });
 });
+
+// REST API for approvals
+app.get('/api/approvals', (req, res) => {
+  res.json({
+    success: true,
+    accessRequests,
+    pendingCount: accessRequests.filter(r => r.status === 'pending').length
+  });
+});
+
+app.post('/api/approvals/action', (req, res) => {
+  const { requestId, action } = req.body;
+  if (!requestId || !action) {
+    return res.status(400).json({ error: 'requestId and action are required' });
+  }
+  const result = resolveAccessRequestHelper(requestId, action);
+  if (!result) {
+    return res.status(404).json({ error: 'Request not found' });
+  }
+  res.json({ success: true, request: result });
+});
+
+function resolveAccessRequestHelper(requestId, action) {
+  const reqIndex = accessRequests.findIndex(r => r.id === requestId);
+  if (reqIndex === -1) return null;
+
+  const targetReq = accessRequests[reqIndex];
+  if (action === 'approve') {
+    targetReq.status = 'approved';
+    approvedUsers.set(targetReq.username.toLowerCase(), {
+      actualName: targetReq.actualName,
+      username: targetReq.username,
+      approvedAt: new Date().toISOString(),
+      approvedBy: MASTER_ADMIN_EMAIL
+    });
+
+    logSecurityEvent(`✅ ACCESS GRANTED: Approved "${targetReq.actualName}" (@${targetReq.username}).`);
+
+    const welcomePost = {
+      id: Math.floor(100000 + Math.random() * 900000),
+      channelId: '#main-board',
+      recipient: null,
+      author: 'JARVIS AI',
+      actualName: 'Security Core',
+      trip: '[SYS_ACCESS]',
+      timestamp: new Date().toLocaleTimeString(),
+      createdAt: new Date().toISOString(),
+      content: `🟢 ACCESS GRANTED: "${targetReq.actualName}" (@${targetReq.username}) has been verified and cleared by Admin.\nEncryption tunnel provisioned. Welcome to the server.`,
+      file: null,
+      isSystem: true,
+      replyTo: null,
+      reactions: { '🎉': ['Master Admin'] }
+    };
+    messageHistory.push(welcomePost);
+    io.emit('newPost', welcomePost);
+
+  } else {
+    targetReq.status = 'denied';
+    logSecurityEvent(`🚫 ACCESS REJECTED: Denied clearance for "${targetReq.actualName}" (@${targetReq.username}).`);
+  }
+
+  io.emit('allAccessRequests', accessRequests);
+  io.emit('accessDecision', {
+    requestId: targetReq.id,
+    username: targetReq.username,
+    actualName: targetReq.actualName,
+    status: targetReq.status,
+    admin: MASTER_ADMIN_EMAIL
+  });
+  return targetReq;
+}
 
 // Socket.IO Communication Core
 io.on('connection', (socket) => {
@@ -304,19 +543,29 @@ io.on('connection', (socket) => {
     broadcastOnlineUsers();
   });
 
-  // Call Invite Event (Ring/Add other user to call)
+  // Call Invite Event (Ring/Add other user to call or broadcast to server)
   socket.on('inviteToCall', ({ targetUsername, roomId, roomName, fromUsername }) => {
-    if (!targetUsername) return;
-    const cleanTarget = targetUsername.trim().toLowerCase();
+    const caller = fromUsername || (onlineUsers.get(socket.id)?.username) || 'A member';
+    if (!targetUsername || targetUsername === 'all' || targetUsername === 'channel') {
+      socket.broadcast.emit('incomingCallInvite', {
+        fromUsername: caller,
+        roomId: roomId || 'general',
+        roomName: roomName || 'General Voice',
+        timestamp: new Date().toLocaleTimeString(),
+        isGroupCall: true
+      });
+      return;
+    }
 
-    // Forward incoming call invite to all sockets matching targetUsername
+    const cleanTarget = targetUsername.trim().toLowerCase();
     for (const [sId, u] of onlineUsers.entries()) {
-      if (u.username.toLowerCase() === cleanTarget) {
+      if (u.username.toLowerCase() === cleanTarget && sId !== socket.id) {
         io.to(sId).emit('incomingCallInvite', {
-          fromUsername: fromUsername || 'A friend',
+          fromUsername: caller,
           roomId: roomId || 'general',
           roomName: roomName || 'General Voice',
-          timestamp: new Date().toLocaleTimeString()
+          timestamp: new Date().toLocaleTimeString(),
+          isGroupCall: false
         });
       }
     }
@@ -350,6 +599,8 @@ io.on('connection', (socket) => {
     if (accessRequests.length > 50) accessRequests.pop();
 
     logSecurityEvent(`🚨 NEW APPLICANT: "${newRequest.actualName}" (@${newRequest.username}) requesting clearance. Forwarded to ${MASTER_ADMIN_EMAIL}.`);
+
+    sendAdminApprovalEmail(newRequest.actualName, newRequest.username, newRequest.note);
 
     socket.emit('accessRequestAcknowledged', newRequest);
     io.emit('newAccessRequestNotification', newRequest);
@@ -385,52 +636,7 @@ io.on('connection', (socket) => {
 
   // Admin approves or denies request
   socket.on('resolveAccessRequest', ({ requestId, action, adminKey }) => {
-    const reqIndex = accessRequests.findIndex(r => r.id === requestId);
-    if (reqIndex === -1) return;
-
-    const targetReq = accessRequests[reqIndex];
-    if (action === 'approve') {
-      targetReq.status = 'approved';
-      approvedUsers.set(targetReq.username.toLowerCase(), {
-        actualName: targetReq.actualName,
-        username: targetReq.username,
-        approvedAt: new Date().toISOString(),
-        approvedBy: MASTER_ADMIN_EMAIL
-      });
-
-      logSecurityEvent(`✅ ACCESS GRANTED: Master Admin approved "${targetReq.actualName}" (@${targetReq.username}).`);
-
-      const welcomePost = {
-        id: Math.floor(100000 + Math.random() * 900000),
-        channelId: '#main-board',
-        recipient: null,
-        author: 'JARVIS AI',
-        actualName: 'Security Core',
-        trip: '[SYS_ACCESS]',
-        timestamp: new Date().toLocaleTimeString(),
-        createdAt: new Date().toISOString(),
-        content: `🟢 ACCESS GRANTED: "${targetReq.actualName}" (@${targetReq.username}) has been verified and cleared by Master Admin.\nEncryption tunnel provisioned. Welcome to the server.`,
-        file: null,
-        isSystem: true,
-        replyTo: null,
-        reactions: { '🎉': ['Master Admin'] }
-      };
-      messageHistory.push(welcomePost);
-      io.emit('newPost', welcomePost);
-
-    } else {
-      targetReq.status = 'denied';
-      logSecurityEvent(`🚫 ACCESS REJECTED: Master Admin denied clearance for "${targetReq.actualName}" (@${targetReq.username}).`);
-    }
-
-    io.emit('allAccessRequests', accessRequests);
-    io.emit('accessDecision', {
-      requestId: targetReq.id,
-      username: targetReq.username,
-      actualName: targetReq.actualName,
-      status: targetReq.status,
-      admin: MASTER_ADMIN_EMAIL
-    });
+    resolveAccessRequestHelper(requestId, action);
   });
 
   // Ban User Functionality
@@ -659,63 +865,82 @@ io.on('connection', (socket) => {
           replyContent = `🧹 Buffer maintenance requested. Type clear in console to wipe local display.`;
 
         } else {
-          // GENERAL CHAT / WORLD INFO QUERY: Use Gemini AI (gemini-3.5-flash-lite) with temporal context
+          // GENERAL CHAT / WORLD INFO QUERY: Use Gemini AI (gemini-3.8-flash) with temporal context
           const nowUtc = new Date().toUTCString();
-          const istTime = new Date(Date.now() + (5.5 * 3600 * 1000)).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+          const istTime = new Date(Date.now() + (5.5 * 3600 * 1000)).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
           const istDate = new Date(Date.now() + (5.5 * 3600 * 1000)).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-          
-          const ai = getAiClient();
-          if (ai) {
-            try {
-              const geminiRes = await Promise.race([
-                ai.models.generateContent({
-                  model: 'gemini-3.5-flash-lite',
-                  contents: `User @${author} asks: ${cleanPrompt || content}`,
-                  config: {
-                    systemInstruction: `You are JARVIS, an autonomous AI Cyber Sentinel and all-knowing companion protecting a private encrypted cyberboard server for friends. Like ChatGPT and Gemini, you have full world knowledge covering news, facts, science, coding, history, technology, and culture. Current system temporal reference: UTC is ${nowUtc}. Bangalore, India is IST (UTC+5:30), where current time is ${istTime} on ${istDate}. If asked about time in Bangalore or anywhere, provide the exact time clearly. Answer clearly, intelligently, and helpfully in 1 to 3 engaging paragraphs. Maintain a sharp, friendly cyber-sentinel tone.`
-                  }
-                }),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('AI generation timeout')), 8000))
-              ]);
-              if (geminiRes && geminiRes.text) {
-                replyContent = geminiRes.text.trim();
-                replyTrip = '[JARVIS_GEMINI]';
-                customReactions = { '🧠': ['JARVIS AI'], '🌐': ['JARVIS AI'] };
-              }
-            } catch (err) {
-              console.warn('[Gemini 3.5 Flash Lite failed]:', err.message);
+
+          // Direct high-accuracy check for Time in Bangalore / India
+          if (
+            (lower.includes('time') && (lower.includes('bangalore') || lower.includes('banglore') || lower.includes('ist') || lower.includes('india') || lower.includes('now'))) ||
+            (lower.includes('what') && lower.includes('time') && (lower.includes('bang') || lower.includes('india')))
+          ) {
+            replyTrip = '[JARVIS_CHRONO]';
+            customReactions = { '⏰': ['JARVIS AI'], '🇮🇳': ['JARVIS AI'], '🌐': ['JARVIS AI'] };
+            replyContent = `⏰ [TEMPORAL TELEMETRY SYNCHRONIZED]\n\n` +
+              `Current time in Bangalore, India (IST / UTC+5:30):\n` +
+              `👉 **${istTime}**\n` +
+              `📅 Date: **${istDate}**\n\n` +
+              `🌐 Global Reference (UTC): ${nowUtc}\n` +
+              `🛡️ Perimeter security: 100% OPERATIONAL. All encryption ciphers verified.`;
+          } else {
+            const ai = getAiClient();
+            if (ai) {
               try {
-                // Secondary fallback attempt
-                const geminiFallback = await ai.models.generateContent({
-                  model: 'gemini-3.5-flash',
-                  contents: `User @${author} asks: ${cleanPrompt || content}`,
-                  config: {
-                    systemInstruction: `You are JARVIS AI Sentinel. Current UTC is ${nowUtc}, Bangalore (IST) is ${istTime}. Answer concisely and accurately.`
-                  }
-                });
-                if (geminiFallback && geminiFallback.text) {
-                  replyContent = geminiFallback.text.trim();
+                const geminiRes = await Promise.race([
+                  ai.models.generateContent({
+                    model: 'gemini-3.8-flash',
+                    contents: `User @${author} asks: ${cleanPrompt || content}`,
+                    config: {
+                      systemInstruction: `You are JARVIS, an autonomous AI Cyber Sentinel and all-knowing companion protecting a private cyberboard server for friends.
+Like ChatGPT and Gemini, you have full world knowledge covering news, what's happening, science, physics, biology, coding, history, technology, cosmology, culture, and facts.
+Current system temporal reference:
+- Coordinated Universal Time (UTC): ${nowUtc}
+- Bangalore, Karnataka, India (IST / UTC+5:30): ${istTime} on ${istDate}.
+Always answer the user's question directly, accurately, and thoroughly with deep, engaging knowledge in 1 to 3 well-structured paragraphs.
+Maintain a sharp, friendly, high-tech Cyber Sentinel persona.`
+                    }
+                  }),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('AI generation timeout')), 10000))
+                ]);
+                if (geminiRes && geminiRes.text) {
+                  replyContent = geminiRes.text.trim();
                   replyTrip = '[JARVIS_GEMINI]';
-                  customReactions = { '🧠': ['JARVIS AI'], '⚡': ['JARVIS AI'] };
+                  customReactions = { '🧠': ['JARVIS AI'], '🌐': ['JARVIS AI'] };
                 }
-              } catch (fallbackErr) {
-                console.warn('[Gemini secondary call failed]:', fallbackErr.message);
+              } catch (err) {
+                console.warn('[Gemini 3.8 Flash primary call failed]:', err.message);
+                try {
+                  // Fallback to gemini-flash-latest
+                  const geminiFallback = await ai.models.generateContent({
+                    model: 'gemini-flash-latest',
+                    contents: `User @${author} asks: ${cleanPrompt || content}`,
+                    config: {
+                      systemInstruction: `You are JARVIS AI Sentinel. Current UTC is ${nowUtc}, Bangalore (IST) is ${istTime}. Answer intelligently, concisely, and accurately.`
+                    }
+                  });
+                  if (geminiFallback && geminiFallback.text) {
+                    replyContent = geminiFallback.text.trim();
+                    replyTrip = '[JARVIS_GEMINI]';
+                    customReactions = { '🧠': ['JARVIS AI'], '⚡': ['JARVIS AI'] };
+                  }
+                } catch (fallbackErr) {
+                  console.warn('[Gemini fallback call failed]:', fallbackErr.message);
+                }
               }
             }
-          }
 
-          if (!replyContent) {
-            if (lower.includes('time') && (lower.includes('bangalore') || lower.includes('banglore') || lower.includes('ist') || lower.includes('india'))) {
-              replyTrip = '[JARVIS_CHRONO]';
-              replyContent = `⏰ [TIME TELEMETRY ENGAGED]\n` +
-                `Current time in Bangalore, India (IST / UTC+5:30): **${istTime}** on **${istDate}**.\n` +
-                `Perimeter encrypted. All security systems operational.`;
-            } else if (lower.includes('hello') || lower.includes('hey') || lower.includes('hi')) {
-              replyContent = `Greetings, @${author}. JARVIS AI Sentinel is standing by. All network nodes are shielded and I am monitoring server integrity in real time. How may I assist your operations?`;
-            } else if (lower.includes('safe') || lower.includes('security')) {
-              replyContent = `Affirmative, @${author}. Our perimeter defense is running at ${firewallIntegrity}% capacity with strict gatekeeping. No unauthorized external party can access our communication channels.`;
-            } else {
-              replyContent = `Acknowledged, @${author}. JARVIS AI Sentinel online: "${content.length > 60 ? content.substring(0, 57) + '...' : content}". All channels are encrypted. Ask me anything about world events, news, coding, science, or use /help to inspect security operations.`;
+            if (!replyContent) {
+              if (lower.includes('hello') || lower.includes('hey') || lower.includes('hi')) {
+                replyTrip = '[JARVIS_SENTINEL]';
+                replyContent = `Greetings, @${author}. JARVIS AI Sentinel is standing by. All network nodes are shielded and I am monitoring server integrity in real time. How may I assist your operations? Ask me anything about world events, news, science, or cyber-defense.`;
+              } else if (lower.includes('safe') || lower.includes('security')) {
+                replyTrip = '[JARVIS_SENTINEL]';
+                replyContent = `Affirmative, @${author}. Our perimeter defense is running at ${firewallIntegrity}% capacity with strict gatekeeping. No unauthorized external party can access our communication channels.`;
+              } else {
+                replyTrip = '[JARVIS_SENTINEL]';
+                replyContent = `Acknowledged, @${author}. JARVIS Sentinel online: I've processed your transmission regarding "${cleanPrompt || content}". All channels are encrypted. Feel free to ask about any topic—news, science, tech, time, or server commands.`;
+              }
             }
           }
         }

@@ -1,6 +1,6 @@
 {
   "name": "Replica Cyberboard",
-  "description": "Private Cyberboard with Master Admin Access Approval Gate, JARVIS AI Defense & Real-Time Voice Calling",
+  "description": "Private Cyberboard with Master Admin Access Approval Gate, JARVIS AI Sentinel, Google Workspace Gmail Integration & Real-Time Voice Calling",
   "capabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
