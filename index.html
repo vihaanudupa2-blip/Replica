@@ -383,7 +383,12 @@
     const TrashIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>);
     const RefreshIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>);
     const EditIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>);
-    const ReplyIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>);
+    const ScreenShareIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="9 9 12 6 15 9"/><line x1="12" y1="6" x2="12" y2="13"/></svg>);
+    const MaximizeIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>);
+    const MinimizeIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 14h6m0 0v6m0-6L3 21m17-7h-6m0 0v6m0-6l7 7M14 4h6m0 0v6m0-6l-7 7M4 10h6m0 0V4m0 6L3 3"/></svg>);
+    const Volume2Icon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>);
+    const VolumeXIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>);
+    const PipIcon = () => (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="10" width="8" height="7" rx="1"/></svg>);
 
     // Google Workspace Firebase Auth Configuration
     const FIREBASE_CONFIG = {
@@ -568,6 +573,35 @@
       const callTimerRef = useRef(null);
       const micAudioCtxRef = useRef(null);
       const micStreamRef = useRef(null);
+
+      // Real-Time Screen Sharing State & Video Stream Refs
+      const [isScreenSharing, setIsScreenSharing] = useState(false);
+      const [activeScreenShares, setActiveScreenShares] = useState([]);
+      const [remoteScreenStream, setRemoteScreenStream] = useState(null);
+      const [isWatchingRemoteScreen, setIsWatchingRemoteScreen] = useState(false);
+      const [activeViewingShare, setActiveViewingShare] = useState(null);
+      const [screenShareAudioMuted, setScreenShareAudioMuted] = useState(false);
+      const [isScreenShareFullscreen, setIsScreenShareFullscreen] = useState(false);
+      const [isScreenShareMinimized, setIsScreenShareMinimized] = useState(false);
+
+      const screenStreamRef = useRef(null);
+      const localScreenVideoRef = useRef(null);
+      const remoteScreenVideoRef = useRef(null);
+      const screenStageContainerRef = useRef(null);
+      const peerConnectionsRef = useRef(new Map());
+
+      // Sync active media streams with video elements
+      useEffect(() => {
+        if (localScreenVideoRef.current && screenStreamRef.current) {
+          localScreenVideoRef.current.srcObject = screenStreamRef.current;
+        }
+      }, [isScreenSharing, isScreenShareMinimized]);
+
+      useEffect(() => {
+        if (remoteScreenVideoRef.current && remoteScreenStream) {
+          remoteScreenVideoRef.current.srcObject = remoteScreenStream;
+        }
+      }, [remoteScreenStream, isWatchingRemoteScreen, isScreenShareMinimized, activeViewingShare]);
 
       // Firebase Auth Listener
       useEffect(() => {
@@ -911,6 +945,90 @@
         socket.on('allMembersList', (members) => {
           if (Array.isArray(members)) {
             setAllMembers(members);
+          }
+        });
+
+        // Live Screen Sharing State & WebRTC Signaling
+        socket.on('screenShareStateUpdate', (shares) => {
+          if (Array.isArray(shares)) {
+            setActiveScreenShares(shares);
+          }
+        });
+
+        socket.on('screenShareStarted', (shareInfo) => {
+          playCyberAudio('alert');
+          showToast(`🖥️ Live Screen Share: @${shareInfo.username} started sharing screen!`, 'info');
+        });
+
+        socket.on('screenShareStopped', ({ username }) => {
+          showToast(`🖥️ @${username} stopped sharing screen.`, 'info');
+          if (remoteScreenVideoRef.current) {
+            remoteScreenVideoRef.current.srcObject = null;
+          }
+          setRemoteScreenStream(null);
+          setIsWatchingRemoteScreen(false);
+          setActiveViewingShare(null);
+        });
+
+        // When another user requests our live screen stream while we are presenting
+        socket.on('screenStreamRequested', ({ viewerSocketId, viewerUsername }) => {
+          if (screenStreamRef.current && isScreenSharing) {
+            createPeerOfferForScreenShare(viewerSocketId, screenStreamRef.current);
+            showToast(`🖥️ Streaming display to @${viewerUsername}...`, 'info');
+          }
+        });
+
+        socket.on('screenShareSignal', async ({ fromSocketId, signal, type }) => {
+          try {
+            let pc = peerConnectionsRef.current.get(fromSocketId);
+            if (!pc) {
+              pc = new RTCPeerConnection({
+                iceServers: [
+                  { urls: 'stun:stun.l.google.com:19302' },
+                  { urls: 'stun:stun1.l.google.com:19302' }
+                ]
+              });
+              peerConnectionsRef.current.set(fromSocketId, pc);
+
+              pc.ontrack = (event) => {
+                if (event.streams && event.streams[0]) {
+                  setRemoteScreenStream(event.streams[0]);
+                  setIsWatchingRemoteScreen(true);
+                  if (remoteScreenVideoRef.current) {
+                    remoteScreenVideoRef.current.srcObject = event.streams[0];
+                  }
+                }
+              };
+
+              pc.onicecandidate = (event) => {
+                if (event.candidate && socketRef.current) {
+                  socketRef.current.emit('screenShareSignal', {
+                    targetSocketId: fromSocketId,
+                    signal: { candidate: event.candidate },
+                    type: 'candidate'
+                  });
+                }
+              };
+            }
+
+            if (signal.sdp) {
+              await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+              if (signal.sdp.type === 'offer') {
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                if (socketRef.current) {
+                  socketRef.current.emit('screenShareSignal', {
+                    targetSocketId: fromSocketId,
+                    signal: { sdp: pc.localDescription },
+                    type: 'answer'
+                  });
+                }
+              }
+            } else if (signal.candidate) {
+              await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            }
+          } catch (e) {
+            console.warn('WebRTC signal handling notice:', e);
           }
         });
 
@@ -1286,12 +1404,205 @@
             });
           }
         } else {
+          if (isScreenSharing) {
+            handleStopScreenShare();
+          }
           setIsVoiceActive(false);
           setIsSpeakingLocal(false);
           playCyberAudio('alert');
           if (socketRef.current) {
             socketRef.current.emit('leaveVoiceCall');
           }
+        }
+      };
+
+      // Helper to establish peer connection and offer to a specific viewer
+      const createPeerOfferForScreenShare = async (targetSocketId, stream) => {
+        if (!targetSocketId || !stream) return;
+        try {
+          let pc = peerConnectionsRef.current.get(targetSocketId);
+          if (pc) {
+            try { pc.close(); } catch(e) {}
+            peerConnectionsRef.current.delete(targetSocketId);
+          }
+          pc = new RTCPeerConnection({
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+          });
+          peerConnectionsRef.current.set(targetSocketId, pc);
+
+          stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+          pc.onicecandidate = (event) => {
+            if (event.candidate && socketRef.current) {
+              socketRef.current.emit('screenShareSignal', {
+                targetSocketId,
+                signal: { candidate: event.candidate },
+                type: 'candidate'
+              });
+            }
+          };
+
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          if (socketRef.current) {
+            socketRef.current.emit('screenShareSignal', {
+              targetSocketId,
+              signal: { sdp: pc.localDescription },
+              type: 'offer'
+            });
+          }
+        } catch (e) {
+          console.warn('Error creating peer connection for screen share:', e);
+        }
+      };
+
+      // Real-Time Screen Share Handlers
+      const handleStartScreenShare = async () => {
+        if (isScreenSharing) {
+          handleStopScreenShare();
+          return;
+        }
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+          showToast('Screen sharing is not supported in this browser.', 'warning');
+          return;
+        }
+
+        try {
+          if (!isVoiceActive) {
+            handleToggleVoice();
+          }
+
+          let stream = null;
+          try {
+            stream = await navigator.mediaDevices.getDisplayMedia({
+              video: {
+                cursor: 'always'
+              },
+              audio: true
+            });
+          } catch (firstErr) {
+            if (firstErr.name === 'NotAllowedError') {
+              showToast('Screen share request cancelled.', 'info');
+              return;
+            }
+            // Fallback to video only
+            stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+          }
+
+          if (!stream) return;
+
+          screenStreamRef.current = stream;
+          setIsScreenSharing(true);
+          setIsScreenShareMinimized(false);
+          playCyberAudio('grant');
+          showToast('🖥️ Screen sharing active! Broadcasting live display.', 'info');
+
+          // Attach to local video preview
+          if (localScreenVideoRef.current) {
+            localScreenVideoRef.current.srcObject = stream;
+          }
+
+          if (socketRef.current && currentUser) {
+            socketRef.current.emit('startScreenShare', {
+              username: currentUser.username,
+              actualName: currentUser.actualName
+            });
+
+            // Initiate WebRTC peer connections with existing participants in voice
+            voiceParticipants.forEach((p) => {
+              if (p.socketId && p.socketId !== socketRef.current.id) {
+                createPeerOfferForScreenShare(p.socketId, stream);
+              }
+            });
+          }
+
+          // Native browser "Stop Sharing" detection
+          const videoTrack = stream.getVideoTracks()[0];
+          if (videoTrack) {
+            videoTrack.onended = () => {
+              handleStopScreenShare();
+            };
+          }
+        } catch (err) {
+          if (err.name !== 'NotAllowedError') {
+            showToast('Screen share error: ' + err.message, 'error');
+          }
+        }
+      };
+
+      const handleStopScreenShare = () => {
+        if (screenStreamRef.current) {
+          screenStreamRef.current.getTracks().forEach(t => t.stop());
+          screenStreamRef.current = null;
+        }
+        if (localScreenVideoRef.current) {
+          localScreenVideoRef.current.srcObject = null;
+        }
+        peerConnectionsRef.current.forEach(pc => {
+          try { pc.close(); } catch(e) {}
+        });
+        peerConnectionsRef.current.clear();
+
+        setIsScreenSharing(false);
+        if (socketRef.current) {
+          socketRef.current.emit('stopScreenShare');
+        }
+        showToast('Screen sharing stopped.', 'info');
+      };
+
+      // Watch a Remote Screen Stream
+      const handleWatchScreenShare = (share) => {
+        if (!share) return;
+        setActiveViewingShare(share);
+        setIsWatchingRemoteScreen(true);
+        setIsScreenShareMinimized(false);
+        playCyberAudio('select');
+        showToast(`Connecting to @${share.username}'s live screen stream...`, 'info');
+        if (socketRef.current) {
+          socketRef.current.emit('requestScreenStream', {
+            presenterSocketId: share.socketId,
+            viewerUsername: currentUser ? currentUser.username : 'User'
+          });
+        }
+      };
+
+      const handleCloseWatchingScreen = () => {
+        setIsWatchingRemoteScreen(false);
+        setActiveViewingShare(null);
+        setRemoteScreenStream(null);
+        if (remoteScreenVideoRef.current) {
+          remoteScreenVideoRef.current.srcObject = null;
+        }
+        showToast('Closed screen share viewer.', 'info');
+      };
+
+      const handleToggleScreenSharePiP = async (videoEl) => {
+        try {
+          if (document.pictureInPictureElement) {
+            await document.exitPictureInPicture();
+          } else if (videoEl && document.pictureInPictureEnabled) {
+            await videoEl.requestPictureInPicture();
+          }
+        } catch (err) {
+          console.warn('PiP notice:', err);
+        }
+      };
+
+      const handleToggleScreenShareFullscreen = (containerEl) => {
+        try {
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+            setIsScreenShareFullscreen(false);
+          } else if (containerEl && containerEl.requestFullscreen) {
+            containerEl.requestFullscreen();
+            setIsScreenShareFullscreen(true);
+          }
+        } catch (err) {
+          console.warn('Fullscreen notice:', err);
         }
       };
 
@@ -2111,6 +2422,20 @@
                 <span>{isVoiceActive ? 'In Voice' : 'Join Call'}</span>
               </button>
 
+              {/* Header Screen Share Button */}
+              <button
+                onClick={handleStartScreenShare}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition ${
+                  isScreenSharing
+                    ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-500 shadow-sm shadow-rose-600/30 animate-pulse'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                }`}
+                title={isScreenSharing ? "Stop sharing your screen" : "Broadcast your screen live"}
+              >
+                <ScreenShareIcon />
+                <span>{isScreenSharing ? 'Stop Share' : 'Share Screen'}</span>
+              </button>
+
               {/* Toggle Discord-style Members Panel */}
               <button
                 onClick={() => setIsMembersSidebarOpen(!isMembersSidebarOpen)}
@@ -2159,7 +2484,7 @@
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center flex-wrap gap-2">
                   {/* ADD OTHERS TO CALL BUTTON */}
                   <button
                     onClick={() => setIsInviteModalOpen(true)}
@@ -2169,6 +2494,38 @@
                     <UserPlusIcon />
                     <span>Add to Call</span>
                   </button>
+
+                  {/* VOICE BAR SCREEN SHARE BUTTON */}
+                  <button
+                    onClick={handleStartScreenShare}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition ${
+                      isScreenSharing
+                        ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-500 shadow-sm animate-pulse'
+                        : 'bg-purple-600 hover:bg-purple-500 text-white border-purple-500 shadow-sm'
+                    }`}
+                    title={isScreenSharing ? "Stop broadcasting your screen" : "Broadcast screen to voice participants"}
+                  >
+                    <ScreenShareIcon />
+                    <span>{isScreenSharing ? 'Stop Screen' : 'Share Screen'}</span>
+                  </button>
+
+                  {/* ACTIVE SCREEN SHARE PARTICIPANT QUICK WATCH PILLS */}
+                  {activeScreenShares.filter(s => !currentUser || s.username !== currentUser.username).map(share => (
+                    <button
+                      key={share.socketId}
+                      onClick={() => handleWatchScreenShare(share)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition ${
+                        isWatchingRemoteScreen && activeViewingShare?.username === share.username
+                          ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
+                          : 'bg-purple-950/80 hover:bg-purple-900 text-purple-200 border-purple-700/80 shadow-sm'
+                      }`}
+                      title={`Watch @${share.username}'s live screen stream`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                      <ScreenShareIcon />
+                      <span>{isWatchingRemoteScreen && activeViewingShare?.username === share.username ? `Watching @${share.username}` : `Watch @${share.username}`}</span>
+                    </button>
+                  ))}
 
                   {isVoiceActive ? (
                     <>
@@ -2255,153 +2612,86 @@
           {/* MAIN THREE-COLUMN DISCORD LAYOUT: SIDEBAR + CHAT + MEMBERS */}
           <div className="flex-1 flex flex-col md:flex-row gap-3 min-h-[580px]">
             
-            {/* 1. LEFT SIDEBAR: SERVER CHANNELS & DMs */}
-            <aside className="w-full md:w-60 bg-[#121620] border border-slate-800 rounded-xl p-3 flex flex-col justify-between shrink-0 shadow-sm">
-              <div className="space-y-5">
-                
-                {/* SERVER GROUP CHANNELS (ALL LOGGED-IN USERS ARE IN THIS GROUP) */}
-                <div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-                    <span>SERVER GROUP</span>
-                    <span className="text-[10px] text-slate-500 font-mono">ALL USERS</span>
-                  </div>
-                  <div className="space-y-1">
-                    {channels.map((ch) => {
-                      const isActive = activeChatTarget.type === 'channel' && activeChatTarget.id === ch.id;
-                      return (
-                        <button
-                          key={ch.id}
-                          onClick={() => setActiveChatTarget({ type: 'channel', id: ch.id })}
-                          className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center gap-2.5 text-xs transition ${
-                            isActive
-                              ? 'bg-indigo-600 text-white font-semibold shadow-sm'
-                              : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
-                          }`}
-                        >
-                          <HashIcon />
-                          <span className="truncate">{ch.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* DIRECT MESSAGES (DMs) */}
-                <div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <span>DIRECT MESSAGES</span>
-                      <span className="text-[10px] text-slate-500 font-normal">({allKnownFriends.length + 1})</span>
-                    </span>
-                    <button
-                      onClick={() => { setIsNewDmModalOpen(true); setNewDmSearch(''); }}
-                      className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium px-1.5 py-0.5 rounded bg-indigo-950/60 border border-indigo-800/60 hover:bg-indigo-900/60 transition"
-                      title="Direct message any member (online or offline)"
-                    >
-                      + New DM
-                    </button>
-                  </div>
-                  <div className="space-y-1">
-                    
-                    {/* JARVIS AI SPLIT-SCREEN PANEL */}
-                    <button
-                      onClick={() => {
-                        if (activeChatTarget.type === 'gmail') {
-                          setActiveChatTarget({ type: 'channel', id: '#main-board' });
-                        }
-                        setIsJarvisOpen(true);
-                      }}
-                      className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center gap-2.5 text-xs transition ${
-                        isJarvisOpen
-                          ? 'bg-sky-950/80 text-white font-semibold border border-sky-500/60 shadow-sm'
-                          : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
-                      }`}
-                    >
-                      <UserAvatar username="JARVIS AI" size="xs" showOnlineStatus={true} />
-                      <div className="flex-1 truncate">
-                        <div className="font-semibold text-xs text-sky-300 flex items-center justify-between">
-                          <span>JARVIS AI</span>
-                          {isJarvisOpen && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>}
-                        </div>
-                        <div className="text-[10px] text-slate-400">Gemini 3.8 AI Assistant</div>
-                      </div>
-                      <span className="text-[10px] bg-sky-950 text-sky-300 px-1.5 py-0.5 rounded font-mono">
-                        {isJarvisOpen ? 'Active' : 'Open'}
-                      </span>
-                    </button>
-
-                    {/* Friends Private DMs (Online & Offline) */}
-                    {allKnownFriends.length === 0 ? (
-                      <div className="px-2 py-3 text-[11px] text-slate-500 text-center">
-                        No friends yet. Click <strong>+ New DM</strong> to text anyone!
-                      </div>
-                    ) : (
-                      allKnownFriends.map((fName) => {
-                        const isActive = activeChatTarget.type === 'dm' && activeChatTarget.id === fName;
-                        const isUserOnline = onlineUsernamesSet.has(fName.toLowerCase());
-                        const unreadCount = getUnreadCountForTarget(fName);
-
-                        return (
-                          <div
-                            key={fName}
-                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition ${
-                              isActive
-                                ? 'bg-slate-800 text-white font-semibold'
-                                : 'text-slate-300 hover:bg-slate-800/60'
-                            }`}
-                          >
-                            <button
-                              onClick={() => setActiveChatTarget({ type: 'dm', id: fName })}
-                              className="flex items-center gap-2 flex-1 text-left truncate min-w-0 mr-1"
-                            >
-                              <UserAvatar username={fName} size="xs" showOnlineStatus={isUserOnline} />
-                              <div className="truncate flex-1">
-                                <div className="truncate text-slate-200 font-medium">@{fName}</div>
-                                <div className="text-[10px] text-slate-400 truncate flex items-center gap-1">
-                                  <span className={`w-1.5 h-1.5 rounded-full ${isUserOnline ? 'bg-emerald-400' : 'bg-slate-500'}`}></span>
-                                  <span>{isUserOnline ? 'Online' : 'Offline'}</span>
-                                </div>
-                              </div>
-                            </button>
-
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {unreadCount > 0 && (
-                                <span className="px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold leading-none animate-pulse" title={`${unreadCount} unread messages`}>
-                                  {unreadCount}
-                                </span>
-                              )}
-
-                              {isUserOnline ? (
-                                <button
-                                  onClick={() => handleInviteUserToCall(fName)}
-                                  title={`Call @${fName}`}
-                                  className="text-slate-400 hover:text-emerald-400 p-1 rounded hover:bg-slate-700/60 transition"
-                                >
-                                  <PhoneIcon />
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => setActiveChatTarget({ type: 'dm', id: fName })}
-                                  title={`Text @${fName} (Offline - will see later)`}
-                                  className="text-slate-500 hover:text-indigo-400 p-1 rounded hover:bg-slate-700/60 transition"
-                                >
-                                  <MessageCircleIcon />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })
+            {/* 1. DISCORD-INSPIRED NAVIGATION: FAR-LEFT RAIL + MESSAGES COLUMN */}
+            <div className="flex flex-col md:flex-row shrink-0 gap-2">
+              
+              {/* 1A. FAR-LEFT VERTICAL ICON RAIL */}
+              <div className="hidden md:flex flex-col items-center py-3 px-2 bg-[#0d111a] border border-slate-800 rounded-2xl w-16 justify-between shadow-sm">
+                <div className="flex flex-col items-center gap-2.5 w-full">
+                  {/* Direct Messages Icon with active indicator pill */}
+                  <button
+                    onClick={() => {
+                      setActiveChatTarget({ type: 'channel', id: '#main-board' });
+                      setIsJarvisOpen(true);
+                    }}
+                    className={`relative w-11 h-11 rounded-2xl flex items-center justify-center transition group ${
+                      activeChatTarget.id === '#main-board'
+                        ? 'bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-600/30'
+                        : 'bg-slate-800 text-slate-300 hover:bg-indigo-600 hover:text-white rounded-2xl hover:rounded-xl'
+                    }`}
+                    title="Group Chat & Direct Messages"
+                  >
+                    <MessageCircleIcon />
+                    {activeChatTarget.id === '#main-board' && (
+                      <span className="absolute -left-2 top-2.5 bottom-2.5 w-1 bg-white rounded-r-full"></span>
                     )}
-                  </div>
-                </div>
+                  </button>
 
-                {/* GOOGLE WORKSPACE GMAIL */}
-                <div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-                    <span>WORKSPACE</span>
-                    <span className="text-[10px] text-rose-400 font-mono">GMAIL</span>
-                  </div>
+                  <div className="w-8 h-[2px] bg-slate-800 rounded-full my-0.5"></div>
+
+                  {/* Server Group Channel: #main-board */}
+                  <button
+                    onClick={() => {
+                      setActiveChatTarget({ type: 'channel', id: '#main-board' });
+                    }}
+                    className={`relative w-11 h-11 flex items-center justify-center transition group ${
+                      activeChatTarget.id === '#main-board' && !isJarvisOpen
+                        ? 'bg-slate-700 text-white rounded-xl'
+                        : 'bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white rounded-2xl hover:rounded-xl'
+                    }`}
+                    title="Group Channel: #main-board"
+                  >
+                    <span className="font-bold text-sm">#</span>
+                  </button>
+
+                  {/* Voice Lounge Channel: #lounge */}
+                  <button
+                    onClick={() => {
+                      setActiveChatTarget({ type: 'channel', id: '#lounge' });
+                    }}
+                    className={`relative w-11 h-11 flex items-center justify-center transition group ${
+                      activeChatTarget.id === '#lounge'
+                        ? 'bg-slate-700 text-white rounded-xl'
+                        : 'bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white rounded-2xl hover:rounded-xl'
+                    }`}
+                    title="Voice Lounge: #lounge"
+                  >
+                    <PhoneIcon />
+                    {voiceParticipants.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 text-slate-950 font-bold rounded-full text-[9px] flex items-center justify-center">
+                        {voiceParticipants.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* JARVIS AI Assistant Circle Icon */}
+                  <button
+                    onClick={() => {
+                      setActiveChatTarget({ type: 'channel', id: '#main-board' });
+                      setIsJarvisOpen(true);
+                    }}
+                    className={`relative w-11 h-11 flex items-center justify-center transition group ${
+                      isJarvisOpen
+                        ? 'bg-sky-600 text-white rounded-xl shadow-md shadow-sky-600/40 ring-2 ring-sky-400/50'
+                        : 'bg-sky-950/80 border border-sky-800/60 text-sky-300 hover:bg-sky-600 hover:text-white rounded-2xl hover:rounded-xl'
+                    }`}
+                    title="Open JARVIS AI Assistant beside Group Chat"
+                  >
+                    <span className="text-base">🤖</span>
+                    <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-900 animate-pulse"></span>
+                  </button>
+
+                  {/* Gmail Workspace Circle Icon */}
                   <button
                     onClick={() => {
                       setActiveChatTarget({ type: 'gmail', id: 'inbox' });
@@ -2409,62 +2699,365 @@
                         fetchGmailMessages(cachedAccessToken, gmailFolder, gmailSearchQuery);
                       }
                     }}
-                    className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between text-xs transition ${
+                    className={`relative w-11 h-11 flex items-center justify-center transition group ${
                       activeChatTarget.type === 'gmail'
-                        ? 'bg-rose-600 text-white font-semibold shadow-sm'
-                        : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
+                        ? 'bg-rose-600 text-white rounded-xl shadow-md shadow-rose-600/30'
+                        : 'bg-slate-800/80 text-slate-400 hover:bg-rose-600 hover:text-white rounded-2xl hover:rounded-xl'
                     }`}
+                    title="Google Workspace Gmail"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-rose-400"><MailIcon /></span>
-                      <div className="truncate">
-                        <div className="font-medium text-xs truncate">Gmail Inbox</div>
-                        <div className="text-[10px] text-slate-400 truncate">
-                          {googleUser ? googleUser.email : 'Click to connect'}
-                        </div>
-                      </div>
-                    </div>
-                    {googleUser && unreadMailCount > 0 && (
-                      <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0">
+                    <MailIcon />
+                    {unreadMailCount > 0 && (
+                      <span className="absolute -top-1 -right-1 px-1 min-w-[16px] h-4 bg-rose-500 text-white font-bold rounded-full text-[9px] flex items-center justify-center">
                         {unreadMailCount}
                       </span>
                     )}
                   </button>
+
+                  {/* Add Friends / New DM Circle */}
+                  <button
+                    onClick={() => { setIsNewDmModalOpen(true); setNewDmSearch(''); }}
+                    className="w-11 h-11 bg-slate-800/60 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-2xl hover:rounded-xl flex items-center justify-center transition"
+                    title="Start New Direct Message"
+                  >
+                    <UserPlusIcon />
+                  </button>
+                </div>
+
+                {/* Bottom User Avatar Pill */}
+                <div className="relative group">
+                  <UserAvatar
+                    username={currentUser.username}
+                    size="sm"
+                    showOnlineStatus={true}
+                    className="ring-2 ring-emerald-500/70"
+                  />
                 </div>
               </div>
 
-              {/* CURRENT USER PROFILE CARD (BOTTOM OF SIDEBAR) */}
-              <div className="pt-3 border-t border-slate-800 mt-4 flex items-center justify-between">
-                <div className="flex items-center gap-2.5 truncate">
-                  <UserAvatar
-                    username={currentUser.username}
-                    size="md"
-                    showOnlineStatus={true}
-                  />
-                  <div className="truncate">
-                    <div className="font-semibold text-xs text-slate-100 truncate">
-                      {currentUser.actualName}
+              {/* 1B. MESSAGES & DIRECT CONVERSATIONS COLUMN */}
+              <aside className="w-full md:w-64 bg-[#121620] border border-slate-800 rounded-2xl p-3 flex flex-col justify-between shrink-0 shadow-sm">
+                <div className="space-y-3.5 overflow-hidden flex flex-col flex-1">
+                  
+                  {/* HEADER: MESSAGES TITLE + ACTION BUTTONS */}
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
+                    <h2 className="font-bold text-slate-100 text-sm tracking-tight flex items-center gap-1.5">
+                      <span>Messages</span>
+                    </h2>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => { setIsNewDmModalOpen(true); setNewDmSearch(''); }}
+                        className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold rounded-lg flex items-center gap-1 transition shadow-sm"
+                        title="Add friends to chat"
+                      >
+                        <UserPlusIcon />
+                        <span>Add Friends</span>
+                      </button>
+                      <button
+                        onClick={() => { setIsNewDmModalOpen(true); setNewDmSearch(''); }}
+                        className="p-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition"
+                        title="New Direct Message"
+                      >
+                        +
+                      </button>
                     </div>
-                    <div className="text-[11px] text-slate-400 font-mono truncate">
-                      @{currentUser.username}
+                  </div>
+
+                  {/* SEARCH MESSAGES / CONVERSATIONS */}
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-2.5 flex items-center text-slate-500 pointer-events-none">
+                      <SearchIcon />
+                    </span>
+                    <input
+                      type="text"
+                      value={newDmSearch}
+                      onChange={(e) => setNewDmSearch(e.target.value)}
+                      placeholder="Search conversations..."
+                      className="w-full bg-[#161b26] border border-slate-700/80 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  {/* ACTIVE NOW HORIZONTAL CARDS (MATCHING DESIGN) */}
+                  <div className="space-y-1.5 shrink-0">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      ACTIVE SERVICES
                     </div>
+
+                    <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                      {/* JARVIS AI ASSISTANT CARD */}
+                      <button
+                        onClick={() => {
+                          setActiveChatTarget({ type: 'channel', id: '#main-board' });
+                          setIsJarvisOpen(true);
+                        }}
+                        className={`min-w-[130px] p-2 rounded-xl text-left border transition shrink-0 ${
+                          isJarvisOpen
+                            ? 'bg-sky-950/80 border-sky-500/80 text-white shadow-sm'
+                            : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm">🤖</span>
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        </div>
+                        <div className="font-bold text-[11px] text-sky-300 truncate">JARVIS AI</div>
+                        <div className="text-[9px] text-slate-400 truncate">Gemini 3.8 Flash</div>
+                      </button>
+
+                      {/* VOICE CALL CARD */}
+                      <button
+                        onClick={handleToggleVoice}
+                        className={`min-w-[130px] p-2 rounded-xl text-left border transition shrink-0 ${
+                          isVoiceActive
+                            ? 'bg-emerald-950/80 border-emerald-500 text-white shadow-sm'
+                            : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm">🎙️</span>
+                          <span className={`w-2 h-2 rounded-full ${isVoiceActive ? 'bg-emerald-400' : 'bg-slate-500'}`}></span>
+                        </div>
+                        <div className="font-bold text-[11px] text-emerald-300 truncate">General Voice</div>
+                        <div className="text-[9px] text-slate-400 truncate">
+                          {isVoiceActive ? 'Connected • AES-256' : 'Click to join call'}
+                        </div>
+                      </button>
+
+                      {/* GMAIL WORKSPACE CARD */}
+                      <button
+                        onClick={() => {
+                          setActiveChatTarget({ type: 'gmail', id: 'inbox' });
+                          if (cachedAccessToken) {
+                            fetchGmailMessages(cachedAccessToken, gmailFolder, gmailSearchQuery);
+                          }
+                        }}
+                        className={`min-w-[130px] p-2 rounded-xl text-left border transition shrink-0 ${
+                          activeChatTarget.type === 'gmail'
+                            ? 'bg-rose-950/80 border-rose-500 text-white shadow-sm'
+                            : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm">✉️</span>
+                          {pendingCount > 0 ? (
+                            <span className="px-1.5 py-0.2 bg-amber-500 text-slate-950 rounded-full font-bold text-[9px]">
+                              {pendingCount} req
+                            </span>
+                          ) : (
+                            <span className="w-2 h-2 rounded-full bg-slate-500"></span>
+                          )}
+                        </div>
+                        <div className="font-bold text-[11px] text-rose-300 truncate">Gmail &amp; Approvals</div>
+                        <div className="text-[9px] text-slate-400 truncate">
+                          {pendingCount > 0 ? `${pendingCount} awaiting clearance` : 'Inbox & Clearance'}
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* CONVERSATION LIST */}
+                  <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar min-h-0 pr-1">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                      <span>CONVERSATIONS</span>
+                      <span className="text-[10px] text-slate-500 font-mono">ALL MEMBERS</span>
+                    </div>
+
+                    {/* JARVIS AI PINNED ITEM */}
+                    <button
+                      onClick={() => {
+                        setActiveChatTarget({ type: 'channel', id: '#main-board' });
+                        setIsJarvisOpen(true);
+                      }}
+                      className={`w-full text-left px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition border ${
+                        isJarvisOpen
+                          ? 'bg-sky-950/80 border-sky-500/70 text-white shadow-sm font-semibold'
+                          : 'border-transparent text-slate-300 hover:bg-slate-800/70 hover:text-white'
+                      }`}
+                    >
+                      <UserAvatar username="JARVIS AI" size="sm" showOnlineStatus={true} />
+                      <div className="flex-1 truncate">
+                        <div className="font-semibold text-xs text-sky-300 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <span>JARVIS AI</span>
+                            <span className="text-[9px] bg-sky-900 text-sky-200 px-1 py-0.2 rounded font-mono">AI</span>
+                          </span>
+                          <span className="text-[10px] text-slate-500">Active</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">Gemini 3.8 AI Assistant</div>
+                      </div>
+                    </button>
+
+                    {/* SERVER GROUP CHANNEL: #main-board */}
+                    {channels.map((ch) => {
+                      const isActive = activeChatTarget.type === 'channel' && activeChatTarget.id === ch.id && !isJarvisOpen;
+                      return (
+                        <button
+                          key={ch.id}
+                          onClick={() => {
+                            setActiveChatTarget({ type: 'channel', id: ch.id });
+                          }}
+                          className={`w-full text-left px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition ${
+                            isActive
+                              ? 'bg-indigo-600 text-white font-semibold shadow-sm'
+                              : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
+                          }`}
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-300 shrink-0">
+                            #
+                          </div>
+                          <div className="flex-1 truncate">
+                            <div className="font-semibold text-xs text-slate-200 flex items-center justify-between truncate">
+                              <span>{ch.name}</span>
+                              <span className="text-[9px] bg-slate-800 text-slate-400 px-1 py-0.2 rounded">GROUP</span>
+                            </div>
+                            <div className="text-[10px] text-slate-400 truncate">{ch.desc}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+
+                    {/* DIRECT MESSAGES (ONLINE & OFFLINE MEMBERS) */}
+                    {allKnownFriends.filter(fName => {
+                      if (!newDmSearch) return true;
+                      return fName.toLowerCase().includes(newDmSearch.toLowerCase());
+                    }).map((fName) => {
+                      const isActive = activeChatTarget.type === 'dm' && activeChatTarget.id === fName;
+                      const isUserOnline = onlineUsernamesSet.has(fName.toLowerCase());
+                      const unreadCount = getUnreadCountForTarget(fName);
+
+                      return (
+                        <div
+                          key={fName}
+                          className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition group ${
+                            isActive
+                              ? 'bg-slate-800 text-white font-semibold'
+                              : 'text-slate-300 hover:bg-slate-800/60'
+                          }`}
+                        >
+                          <button
+                            onClick={() => setActiveChatTarget({ type: 'dm', id: fName })}
+                            className="flex items-center gap-2.5 flex-1 text-left truncate min-w-0 mr-1"
+                          >
+                            <UserAvatar username={fName} size="sm" showOnlineStatus={isUserOnline} />
+                            <div className="truncate flex-1">
+                              <div className="font-semibold text-xs text-slate-200 truncate flex items-center justify-between">
+                                <span className="truncate">@{fName}</span>
+                                <span className="text-[10px] text-slate-500 font-mono">
+                                  {isUserOnline ? 'now' : 'offline'}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-400 truncate flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full ${isUserOnline ? 'bg-emerald-400' : 'bg-slate-500'}`}></span>
+                                <span>{isUserOnline ? 'Available • Click to chat' : 'Offline • Reads later'}</span>
+                              </div>
+                            </div>
+                          </button>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {unreadCount > 0 && (
+                              <span className="px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold leading-none animate-pulse">
+                                {unreadCount}
+                              </span>
+                            )}
+
+                            {isUserOnline ? (
+                              <button
+                                onClick={() => handleInviteUserToCall(fName)}
+                                title={`Start call with @${fName}`}
+                                className="text-slate-400 hover:text-emerald-400 p-1.5 rounded-lg hover:bg-slate-700/60 transition"
+                              >
+                                <PhoneIcon />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setActiveChatTarget({ type: 'dm', id: fName })}
+                                title={`Send message to @${fName}`}
+                                className="text-slate-500 hover:text-indigo-400 p-1.5 rounded-lg hover:bg-slate-700/60 transition"
+                              >
+                                <MessageCircleIcon />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <button
-                  onClick={() => {
-                    if (confirm('Log out from this session?')) {
-                      setCurrentUser(null);
-                      localStorage.removeItem('replica_user');
-                    }
-                  }}
-                  className="text-slate-500 hover:text-slate-300 text-xs p-1"
-                  title="Log out"
-                >
-                  ✕
-                </button>
-              </div>
-            </aside>
+                {/* CURRENT USER PROFILE BAR (EXACTLY MATCHING DISCORD DESIGN AT BOTTOM) */}
+                <div className="pt-2.5 border-t border-slate-800/80 mt-2 flex items-center justify-between bg-[#0e121a] p-2 rounded-xl">
+                  <div className="flex items-center gap-2 truncate">
+                    <UserAvatar
+                      username={currentUser.username}
+                      size="sm"
+                      showOnlineStatus={true}
+                    />
+                    <div className="truncate">
+                      <div className="font-bold text-xs text-slate-100 truncate flex items-center gap-1">
+                        <span>{currentUser.username}</span>
+                        {currentUser.isAdmin && (
+                          <span className="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.2 rounded font-mono">
+                            ADMIN
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-emerald-400 truncate flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        <span>Online</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* NOTIFICATION PERMISSION BELL BUTTON */}
+                    <button
+                      onClick={requestNotificationPermission}
+                      className={`p-1.5 rounded-lg text-xs transition border ${
+                        notificationPermission === 'granted'
+                          ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800/80 hover:bg-emerald-900/60'
+                          : notificationPermission === 'denied'
+                          ? 'bg-rose-950/60 text-rose-400 border-rose-800/80'
+                          : 'bg-indigo-950/90 text-indigo-300 border-indigo-600 animate-pulse'
+                      }`}
+                      title={
+                        notificationPermission === 'granted'
+                          ? 'Call notifications are active'
+                          : 'Click to allow notifications for incoming calls!'
+                      }
+                    >
+                      <span>🔔</span>
+                    </button>
+
+                    {/* MUTE / MIC BUTTON */}
+                    <button
+                      onClick={handleToggleMicMute}
+                      className={`p-1.5 rounded-lg text-xs transition border ${
+                        isMicMuted
+                          ? 'bg-rose-950/60 text-rose-300 border-rose-800'
+                          : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
+                      }`}
+                      title={isMicMuted ? 'Unmute microphone' : 'Mute microphone'}
+                    >
+                      {isMicMuted ? <MicOffIcon /> : <MicIcon />}
+                    </button>
+
+                    {/* LOGOUT BUTTON */}
+                    <button
+                      onClick={() => {
+                        setCurrentUser(null);
+                        localStorage.removeItem('replica_user');
+                        showToast('Logged out of session.', 'info');
+                      }}
+                      className="text-slate-500 hover:text-rose-400 text-xs p-1.5 rounded hover:bg-slate-800 transition"
+                      title="Log out"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              </aside>
+            </div>
 
             {/* 2. CENTER: CHAT FEED & MESSAGE INPUT OR GMAIL WORKSPACE */}
             <main className="flex-1 flex flex-col bg-[#0e121a] border border-slate-800 rounded-xl overflow-hidden shadow-sm min-w-0">
@@ -2978,6 +3571,178 @@
                   >
                     Clear Search Filter
                   </button>
+                </div>
+              )}
+
+              {/* LIVE SCREEN SHARE STAGE / THEATER VIEW */}
+              {(isScreenSharing || isWatchingRemoteScreen || activeScreenShares.length > 0) && (
+                <div className="bg-[#090c14] border-b border-slate-800 p-2 sm:p-3 relative transition-all shrink-0">
+                  {/* Active Streams Ribbon (if someone else is sharing and we're not currently viewing them) */}
+                  {activeScreenShares.filter(s => !currentUser || s.username !== currentUser.username).length > 0 && !isWatchingRemoteScreen && (
+                    <div className="bg-gradient-to-r from-purple-950/80 via-indigo-950/70 to-slate-900 border border-purple-500/40 rounded-xl p-2.5 mb-2 flex flex-wrap items-center justify-between gap-2 shadow-md">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-purple-600/30 text-purple-300 border border-purple-500/50 flex items-center justify-center shrink-0">
+                          <ScreenShareIcon />
+                        </div>
+                        <div className="truncate">
+                          <div className="font-semibold text-xs text-white flex items-center gap-2">
+                            <span>Live Screen Broadcast Available</span>
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                          </div>
+                          <div className="text-[11px] text-purple-200/80 truncate">
+                            {activeScreenShares.filter(s => !currentUser || s.username !== currentUser.username).map(s => `@${s.username}`).join(', ')} is broadcasting screen live
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {activeScreenShares.filter(s => !currentUser || s.username !== currentUser.username).map(share => (
+                          <button
+                            key={share.socketId}
+                            onClick={() => handleWatchScreenShare(share)}
+                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition"
+                          >
+                            <ScreenShareIcon />
+                            <span>Watch @{share.username}'s Screen</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 1. BROADCASTING OUR OWN SCREEN */}
+                  {isScreenSharing && (
+                    <div ref={screenStageContainerRef} className="bg-[#0b0e17] border border-indigo-500/40 rounded-xl overflow-hidden shadow-xl mb-1">
+                      <div className="bg-[#121622] px-3 py-2 flex items-center justify-between border-b border-slate-800 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-2 w-2 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                          </span>
+                          <span className="font-bold text-white text-xs">Your Screen Broadcast (Live)</span>
+                          <span className="text-[10px] bg-red-950 text-red-300 border border-red-800/80 px-1.5 py-0.2 rounded font-mono">
+                            BROADCASTING
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setIsScreenShareMinimized(!isScreenShareMinimized)}
+                            className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+                            title={isScreenShareMinimized ? "Expand Screen Stage" : "Minimize Screen Stage"}
+                          >
+                            {isScreenShareMinimized ? <MaximizeIcon /> : <MinimizeIcon />}
+                          </button>
+                          <button
+                            onClick={() => handleToggleScreenSharePiP(localScreenVideoRef.current)}
+                            className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+                            title="Picture in Picture"
+                          >
+                            <PipIcon />
+                          </button>
+                          <button
+                            onClick={() => handleToggleScreenShareFullscreen(screenStageContainerRef.current)}
+                            className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+                            title="Fullscreen"
+                          >
+                            <MaximizeIcon />
+                          </button>
+                          <button
+                            onClick={handleStopScreenShare}
+                            className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-lg text-xs transition shadow-sm ml-1"
+                          >
+                            Stop Sharing
+                          </button>
+                        </div>
+                      </div>
+
+                      {!isScreenShareMinimized && (
+                        <div className="relative bg-black flex items-center justify-center p-1 min-h-[220px]">
+                          <video
+                            ref={localScreenVideoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="w-full max-h-[380px] object-contain rounded bg-black"
+                          />
+                          <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-sm border border-slate-700/60 text-[10px] text-slate-300 font-mono flex items-center gap-1.5 pointer-events-none">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            <span>Local Display Feed • Live WebRTC Stream</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 2. WATCHING A REMOTE PARTICIPANT'S SCREEN */}
+                  {isWatchingRemoteScreen && (
+                    <div ref={screenStageContainerRef} className="bg-[#0b0e17] border border-purple-500/40 rounded-xl overflow-hidden shadow-xl mb-1">
+                      <div className="bg-[#121622] px-3 py-2 flex items-center justify-between border-b border-slate-800 text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="flex h-2 w-2 relative shrink-0">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                          </span>
+                          <span className="font-bold text-white text-xs truncate">
+                            Watching @{activeViewingShare?.username || 'Peer'}'s Screen
+                          </span>
+                          <span className="text-[10px] bg-purple-950 text-purple-300 border border-purple-800/80 px-1.5 py-0.2 rounded font-mono shrink-0">
+                            LIVE STREAM
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => setScreenShareAudioMuted(!screenShareAudioMuted)}
+                            className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+                            title={screenShareAudioMuted ? "Unmute Stream Audio" : "Mute Stream Audio"}
+                          >
+                            {screenShareAudioMuted ? <VolumeXIcon /> : <Volume2Icon />}
+                          </button>
+                          <button
+                            onClick={() => setIsScreenShareMinimized(!isScreenShareMinimized)}
+                            className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+                            title={isScreenShareMinimized ? "Expand Screen Stage" : "Minimize Screen Stage"}
+                          >
+                            {isScreenShareMinimized ? <MaximizeIcon /> : <MinimizeIcon />}
+                          </button>
+                          <button
+                            onClick={() => handleToggleScreenSharePiP(remoteScreenVideoRef.current)}
+                            className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+                            title="Picture in Picture"
+                          >
+                            <PipIcon />
+                          </button>
+                          <button
+                            onClick={() => handleToggleScreenShareFullscreen(screenStageContainerRef.current)}
+                            className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition"
+                            title="Fullscreen"
+                          >
+                            <MaximizeIcon />
+                          </button>
+                          <button
+                            onClick={handleCloseWatchingScreen}
+                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium rounded-lg text-xs transition border border-slate-700 ml-1"
+                          >
+                            Close Viewer
+                          </button>
+                        </div>
+                      </div>
+
+                      {!isScreenShareMinimized && (
+                        <div className="relative bg-black flex items-center justify-center p-1 min-h-[240px]">
+                          <video
+                            ref={remoteScreenVideoRef}
+                            autoPlay
+                            playsInline
+                            muted={screenShareAudioMuted}
+                            className="w-full max-h-[420px] object-contain rounded bg-black"
+                          />
+                          <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-sm border border-slate-700/60 text-[10px] text-slate-300 font-mono flex items-center gap-1.5 pointer-events-none">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            <span>@{activeViewingShare?.username || 'Peer'} • High Quality Low-Latency Relay</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -3566,6 +4331,8 @@
                         onlineUsers.map((user) => {
                           const isSelf = currentUser && currentUser.username === user.username;
                           const isInVoice = voiceParticipants.some(p => p.username === user.username);
+                          const isSharing = activeScreenShares.some(s => s.username === user.username);
+                          const shareObj = activeScreenShares.find(s => s.username === user.username);
                           return (
                             <div
                               key={user.socketId || user.username}
@@ -3575,27 +4342,47 @@
                               <div className="flex items-center gap-2 truncate">
                                 <UserAvatar username={user.username} size="sm" showOnlineStatus={true} />
                                 <div className="truncate">
-                                  <div className="text-xs font-medium text-slate-200 group-hover:text-white truncate">
-                                    {user.username} {isSelf && '(You)'}
+                                  <div className="text-xs font-medium text-slate-200 group-hover:text-white truncate flex items-center gap-1.5">
+                                    <span className="truncate">{user.username} {isSelf && '(You)'}</span>
+                                    {isSharing && (
+                                      <span className="text-[9px] bg-purple-950 text-purple-300 border border-purple-700/80 px-1 py-0.2 rounded font-mono font-semibold flex items-center gap-1 shrink-0 animate-pulse">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                                        LIVE
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="text-[10px] text-slate-400 truncate">
-                                    {isInVoice ? '📞 In Voice Call' : user.actualName}
+                                    {isSharing ? '🖥️ Sharing Screen' : (isInVoice ? '📞 In Voice Call' : user.actualName)}
                                   </div>
                                 </div>
                               </div>
 
-                              {!isSelf && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveChatTarget({ type: 'dm', id: user.username });
-                                  }}
-                                  className="text-slate-500 hover:text-indigo-400 p-1 opacity-0 group-hover:opacity-100 transition"
-                                  title={`DM @${user.username}`}
-                                >
-                                  <MessageCircleIcon />
-                                </button>
-                              )}
+                              <div className="flex items-center gap-1 shrink-0">
+                                {isSharing && !isSelf && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleWatchScreenShare(shareObj);
+                                    }}
+                                    className="p-1 rounded bg-purple-900/60 hover:bg-purple-800 text-purple-200 text-xs transition"
+                                    title={`Watch @${user.username}'s live screen stream`}
+                                  >
+                                    <ScreenShareIcon />
+                                  </button>
+                                )}
+                                {!isSelf && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveChatTarget({ type: 'dm', id: user.username });
+                                    }}
+                                    className="text-slate-500 hover:text-indigo-400 p-1 opacity-0 group-hover:opacity-100 transition"
+                                    title={`DM @${user.username}`}
+                                  >
+                                    <MessageCircleIcon />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           );
                         })
@@ -3772,6 +4559,20 @@
                     <MessageCircleIcon />
                     <span>Send Direct Message (DM)</span>
                   </button>
+
+                  {activeScreenShares.some(s => s.username === selectedMember.username) && (
+                    <button
+                      onClick={() => {
+                        const share = activeScreenShares.find(s => s.username === selectedMember.username);
+                        handleWatchScreenShare(share);
+                        setSelectedMember(null);
+                      }}
+                      className="w-full py-2 px-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold rounded-lg flex items-center justify-center gap-2 transition shadow-sm"
+                    >
+                      <ScreenShareIcon />
+                      <span>Watch Live Screen Stream</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={() => {
@@ -4188,6 +4989,25 @@
           {lightboxImg && (
             <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setLightboxImg(null)}>
               <img src={lightboxImg} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl" />
+            </div>
+          )}
+
+          {/* TOAST NOTIFICATIONS (NON-BLOCKING) */}
+          {toast && (
+            <div className="fixed bottom-5 right-5 z-50 max-w-sm w-full">
+              <div className={`p-3.5 rounded-xl border shadow-2xl flex items-center gap-3 text-xs ${
+                toast.type === 'error'
+                  ? 'bg-rose-950/95 border-rose-600 text-rose-200'
+                  : toast.type === 'warning'
+                  ? 'bg-amber-950/95 border-amber-600 text-amber-200'
+                  : 'bg-indigo-950/95 border-indigo-600 text-indigo-100'
+              }`}>
+                <span className="text-base shrink-0">
+                  {toast.type === 'error' ? '⚠️' : toast.type === 'warning' ? '🔔' : 'ℹ️'}
+                </span>
+                <div className="flex-1 leading-snug">{toast.message}</div>
+                <button onClick={() => setToast(null)} className="text-slate-400 hover:text-white text-xs">✕</button>
+              </div>
             </div>
           )}
         </div>

@@ -99,6 +99,7 @@ let onlineUsers = new Map();
 
 // Voice Call Participants (Live synced with colored status dots & room IDs)
 let voiceParticipants = new Map();
+let activeScreenShares = new Map();
 
 // Cyber defense telemetry
 let activeSocketsCount = 0;
@@ -517,6 +518,7 @@ io.on('connection', (socket) => {
   socket.emit('allAccessRequests', accessRequests);
   socket.emit('bannedUsersList', Array.from(bannedUsers.entries()).map(([k, v]) => ({ username: k, ...v })));
   socket.emit('voiceStateUpdate', Array.from(voiceParticipants.values()));
+  socket.emit('screenShareStateUpdate', Array.from(activeScreenShares.values()));
   socket.emit('onlineUsersList', Array.from(onlineUsers.values()));
   socket.emit('allMembersList', getAllMembers());
   socket.emit('securityState', {
@@ -1008,6 +1010,83 @@ Maintain a sharp, friendly, high-tech Cyber Sentinel persona.`
       logSecurityEvent(`🎙️ VOICE DISCONNECT: @${p.username} left voice channel.`);
       io.emit('voiceStateUpdate', Array.from(voiceParticipants.values()));
     }
+    if (activeScreenShares.has(socket.id)) {
+      const s = activeScreenShares.get(socket.id);
+      activeScreenShares.delete(socket.id);
+      logSecurityEvent(`🖥️ SCREEN SHARE ENDED: @${s.username} left voice channel.`);
+      io.emit('screenShareStateUpdate', Array.from(activeScreenShares.values()));
+    }
+  });
+
+  // ==========================================
+  // REAL-TIME SCREEN SHARE & WEBRTC SIGNALING
+  // ==========================================
+  socket.on('startScreenShare', ({ username, actualName }) => {
+    const cleanUser = (username || 'Anonymous').trim();
+    const shareInfo = {
+      socketId: socket.id,
+      username: cleanUser,
+      actualName: (actualName || cleanUser).trim(),
+      startedAt: new Date().toLocaleTimeString(),
+      startedAtIso: new Date().toISOString()
+    };
+    activeScreenShares.set(socket.id, shareInfo);
+
+    if (voiceParticipants.has(socket.id)) {
+      const p = voiceParticipants.get(socket.id);
+      p.isScreenSharing = true;
+      voiceParticipants.set(socket.id, p);
+      io.emit('voiceStateUpdate', Array.from(voiceParticipants.values()));
+    }
+
+    logSecurityEvent(`🖥️ LIVE SCREEN SHARE: @${cleanUser} started sharing screen in encrypted channel.`);
+    io.emit('screenShareStateUpdate', Array.from(activeScreenShares.values()));
+    socket.broadcast.emit('screenShareStarted', shareInfo);
+  });
+
+  socket.on('stopScreenShare', () => {
+    if (activeScreenShares.has(socket.id)) {
+      const s = activeScreenShares.get(socket.id);
+      activeScreenShares.delete(socket.id);
+
+      if (voiceParticipants.has(socket.id)) {
+        const p = voiceParticipants.get(socket.id);
+        p.isScreenSharing = false;
+        voiceParticipants.set(socket.id, p);
+        io.emit('voiceStateUpdate', Array.from(voiceParticipants.values()));
+      }
+
+      logSecurityEvent(`🖥️ SCREEN SHARE STOPPED: @${s.username} stopped sharing screen.`);
+      io.emit('screenShareStateUpdate', Array.from(activeScreenShares.values()));
+      socket.broadcast.emit('screenShareStopped', { socketId: socket.id, username: s.username });
+    }
+  });
+
+  // WebRTC Signaling Relay between screen share presenter and viewers
+  socket.on('screenShareSignal', ({ targetSocketId, signal, type }) => {
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('screenShareSignal', {
+        fromSocketId: socket.id,
+        signal,
+        type
+      });
+    } else {
+      socket.broadcast.emit('screenShareSignal', {
+        fromSocketId: socket.id,
+        signal,
+        type
+      });
+    }
+  });
+
+  // Relay stream request from viewers to active presenter
+  socket.on('requestScreenStream', ({ presenterSocketId, viewerUsername }) => {
+    if (presenterSocketId) {
+      io.to(presenterSocketId).emit('screenStreamRequested', {
+        viewerSocketId: socket.id,
+        viewerUsername: viewerUsername || 'User'
+      });
+    }
   });
 
   // Disconnect handling
@@ -1024,6 +1103,13 @@ Maintain a sharp, friendly, high-tech Cyber Sentinel persona.`
       const p = voiceParticipants.get(socket.id);
       voiceParticipants.delete(socket.id);
       io.emit('voiceStateUpdate', Array.from(voiceParticipants.values()));
+    }
+
+    if (activeScreenShares.has(socket.id)) {
+      const s = activeScreenShares.get(socket.id);
+      activeScreenShares.delete(socket.id);
+      io.emit('screenShareStateUpdate', Array.from(activeScreenShares.values()));
+      socket.broadcast.emit('screenShareStopped', { socketId: socket.id, username: s.username });
     }
   });
 });
